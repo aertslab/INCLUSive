@@ -1,0 +1,45 @@
+2003-10-16 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+  * Changed output signals (0 on succes, -1 elsewhere)
+  
+2003-10-06 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+  * Release of version 3.0 of MotifSampler
+  
+2003-08-18 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+  * Created first version of PhyloSampler
+    This version allows the user to define a specific background model 
+    for each sequence in the data set.
+  * Created first version of PriorMotifSampler
+    This program makes it possible to initialize the MotifSampler
+    with a known motif model.
+  
+2003-06-25 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+	* added implementation of NormalizeScoreVector and ResetScoreVector to utilities.cpp
+  * started to update the functional description in the library
+  
+2003-06-25 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+	* Implementation of MaskVector class
+  * Implementation of SequenceComputation class
+    This class is needed to compute scores on individual sequences
+  * removed EstimateNumberCopies from utilities.h 
+
+2003-06-04 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+	* finished implementation GFFWriter and InstanceMap
+
+2003-04-28 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+	* implementation of a GFF writer class
+
+2003-03-19	Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+	* Create first build for
+		MotifScanner
+		MotifComparison
+		MotifRanking
+		MotifLocator
+		CreateBackgroundModel
+		BackgroundScore
+
+
+2003-03-18	Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+	* Start of the INCLUSive Project
+	* Transfer of initial code
+	* Creating "Makefile.am" to build shared library 
+	* ported application to be compatible with new library
