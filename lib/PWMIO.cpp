@@ -31,7 +31,7 @@ PWMIO::PWMIO(string * fileName, int type)
     {
       // read first line
       getline(_ifs, *_pLine, '\n');
-      cerr << "DEBUGLOG: " << *_pLine << endl;
+      // cerr << "DEBUGLOG: " << *_pLine << endl;
       string is = "#INCLUSive";
 
       if (_pLine->compare(0, 10, is) == 0)
@@ -158,21 +158,20 @@ PWMIO::ReadMatrix()
 {
   int W = 0;
   float fA = 0.25, fC = 0.25, fG = 0.25, fT = 0.25;
-  char *pcTag, *pcValue;
-  string *sId, *sCons;
+  char *pcTag = NULL, *pcValue = NULL;
+  string *sId = NULL, *sCons = NULL;
   double score = 0;
 
   // define strings
   pcTag = new char[64];
-  pcValue = new char[129];
+  pcValue = new char[512];
 
   sId = new string("");
   sCons = new string("");
 
   if (!_isOpenReading || !_ifs)
   {
-    cerr <<
-      "--Error-) PWMIO::ReadMatrix(): Trying to read from file which is not open for reading\n";
+    // cerr << "--Error-- PWMIO::ReadMatrix(): Trying to read from file which is not open for reading\n";
     return NULL;
   }
 

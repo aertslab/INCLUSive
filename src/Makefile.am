@@ -9,8 +9,8 @@ INCLUDES =\
 
 AM_CXXFLAGS =\
 	 -Wall -Wimplicit -Wreturn-type -Wunused -Wswitch -Wcomment -Wuninitialized\
-   -Wparentheses -Wtraditional -Wpointer-arith -Wmissing-prototypes\
-   -static -s
+   -Wparentheses -Wpointer-arith -Wmissing-prototypes\
+   -static -g -p
 
 bin_PROGRAMS = \
 	CreateBackgroundModel\
@@ -21,7 +21,11 @@ bin_PROGRAMS = \
 	MotifScanner\
 	MotifSampler\
 	PriorMotifSampler\
-  PhyloSampler
+  PhyloSampler\
+  BlockSampler\
+  BlockRanking\
+  Block2MotifAligner\
+  MotifModelShuffler
 
 # here are the sources of these programs
 CreateBackgroundModel_SOURCES = mainCreateBackgroundModel.cpp
@@ -59,3 +63,19 @@ PriorMotifSampler_LDADD = ../lib/libinclusive.la
 PhyloSampler_SOURCES = mainPhyloSampler.cpp
 PhyloSampler_LDFLAGS = 
 PhyloSampler_LDADD = ../lib/libinclusive.la
+
+BlockSampler_SOURCES = mainBlockSampler.cpp
+BlockSampler_LDFLAGS = 
+BlockSampler_LDADD = ../lib/libinclusive.la
+
+BlockRanking_SOURCES = mainBlockRanking.cpp
+BlockRanking_LDFLAGS = 
+BlockRanking_LDADD = ../lib/libinclusive.la
+
+Block2MotifAligner_SOURCES = mainBlock2MotifAligner.cpp
+Block2MotifAligner_LDFLAGS = 
+Block2MotifAligner_LDADD = ../lib/libinclusive.la
+
+MotifModelShuffler_SOURCES = mainMotifModelShuffler.cpp
+MotifModelShuffler_LDFLAGS = 
+MotifModelShuffler_LDADD = ../lib/libinclusive.la

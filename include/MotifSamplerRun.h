@@ -86,7 +86,11 @@ class MotifSamplerRun{
   void SelectMaxSizeBestInstanceMap(int nbr);
   void SelectBestInstanceMap();
   void ShiftInstanceMap(int maxShift);
-
+  void ExtendLeftInstanceMap(int pos);
+  void ExtendRightInstanceMap(int pos);
+  int CheckLeftExtension(double threshold);
+  int CheckRightExtension(double threshold);
+  
   // motif scores
   void UpdateMotifScores();
   void UpdateMotifScoresFromReducedInstanceMap();
@@ -116,6 +120,7 @@ class MotifSamplerRun{
   
   // masking vectors
   void ResetMasks();
+  void ResetMasks(int wNew);
   void UpdateMasksFromInstanceMap();
 
   // reporting and visualization

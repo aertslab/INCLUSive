@@ -704,7 +704,7 @@ void
       {
 
         // update vector to store start positions
-        if (nbr > (int) pVec.size())
+        if ( nbr > (int)pVec.size() )
           pVec.resize(nbr, -1);
 
         // sample nbr start positions
@@ -1222,7 +1222,7 @@ void
   _pBgModel = bgM;
 
   // set pseudo motif 
-  cerr << "MotifSamplerRun::SetBackgroundModel => set pseudo counts: " << endl;
+  // cerr << "MotifSamplerRun::SetBackgroundModel => set pseudo counts: " << endl;
   // UpdatePseudoCounts(_pBgModel->GetSNF(), constant);
   UpdatePseudoCounts(_pBgModel->GetSNF());
   
@@ -1839,7 +1839,7 @@ void
   
 ******************************************************************************/
 void
-  MotifSamplerRun::ResetMasks()
+MotifSamplerRun::ResetMasks()
 {
   // cerr << "DEBUG: MotifSamplerRun::ResetMasks" << endl;
 
@@ -1861,6 +1861,40 @@ void
     seqIter++;
   }
   // cerr << "DEBUG: MotifSamplerRun::ResetMasks" << endl;
+  return;
+}
+
+
+/******************************************************************************
+  Method: 
+  Class:        
+  Arguments: 
+  
+  Description:
+  
+  Date:         2003/06/26
+  Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+  
+******************************************************************************/
+void
+MotifSamplerRun::ResetMasks(int wNew)
+{
+  if ( wNew < 1 )
+    wNew = 1;
+  
+  // iterate through sequences 
+  MapIterator seqIter = _pComputationMap->begin();
+  while (seqIter != _pComputationMap->end())
+  {
+    // reset mask and set last W-1 positions to zero
+    (*seqIter).second->GetMask(plus_strand)->ResetMask();
+    (*seqIter).second->GetMask(plus_strand)->UpdateMask((*seqIter).first->Length() - wNew + 1,wNew - 1, 0);
+    (*seqIter).second->GetMask(minus_strand)->ResetMask();
+    (*seqIter).second->GetMask(minus_strand)->UpdateMask((*seqIter).first->
+                                                         Length() - wNew + 1,
+                                                         wNew - 1, 0);
+    seqIter++;
+  }
   return;
 }
 
@@ -1951,7 +1985,7 @@ double
 void
   MotifSamplerRun::SetMotifLength(int wLength)
 {
-  // cerr << "DEBUG: MotifSamplerRun::SetMotifLength" << endl;
+  // cerr << "DEBUG: MotifSamplerRun::SetMotifLength" << wLength << endl;
   if (wLength <= 0)
   {
     cerr <<
@@ -2079,12 +2113,15 @@ void
   // cerr << "DEBUG: MotifSamplerRun::CoreSamplingStep" << endl;
   for (int i = 0; i < iterations; i++)
   {
-    if ((i % shiftTime) == 0)
+    if ( maxShift )
     {
-      cerr << "Shift Instances: " << endl;
-      ShiftInstanceMap(maxShift);
+      if ((i % shiftTime) == 0)
+      {
+        cerr << "Shift Instances: " << endl;
+        ShiftInstanceMap(maxShift);
+      }
     }
-
+    
     // loop over all sequences and update scores
     mi = _pComputationMap->begin();
     while (mi != _pComputationMap->end())
@@ -2228,18 +2265,22 @@ void
   if (maxNbr < 1)
   {
     cerr <<
-      "--Error-- MotifSamplerRun::CoreMaxSizeSamplingStep() negative maximal number of instances given."
+      "--Warning-- MotifSamplerRun::CoreMaxSizeSamplingStep() negative maximal number of instances given."
       << endl;
     return;
   }
   for (int i = 0; i < iterations; i++)
   {
-    if ((i % shiftTime) == 0)
+  
+    if ( maxShift ) 
     {
-      cerr << "Shift Instances: " << endl;
-      ShiftInstanceMap(maxShift);
+      if ((i % shiftTime) == 0)
+      {
+        cerr << "Shift Instances with " << maxShift << endl;
+        ShiftInstanceMap(maxShift);
+      }
     }
-
+    
     // loop over all sequences and update scores
     mi = _pComputationMap->begin();
     while (mi != _pComputationMap->end())
@@ -2408,4 +2449,185 @@ void
   }
   cerr << "-----------------------------------------------------------\n\n";
   return;
+}
+
+
+void
+MotifSamplerRun::ExtendLeftInstanceMap(int pos)
+{
+  if ( pos > 0 )
+  {
+    _pInstanceMap->ExtendLeft(pos);
+  }
+  return;
+}
+
+  
+void
+MotifSamplerRun::ExtendRightInstanceMap(int pos)
+{
+  if ( pos > 0 )
+  {
+    _pInstanceMap->ExtendRight(pos);
+  }
+  return;
+}
+
+
+int
+MotifSamplerRun::CheckLeftExtension(double threshold)
+{
+  double score = 2.0;
+  int pos = 1,
+    b = -1;
+  list < Instance * >::iterator lIter;
+  bool getOut = false;
+  vector<double> vACGT(4);
+
+  while ( score > threshold ){
+    // initialize counts
+    for (int i=0; i<4; i++)
+      vACGT[i] = 0.05;
+
+    // loop through all sites and select next positions
+    lIter = _pInstanceMap->begin();
+    while ( lIter != _pInstanceMap->end() )
+    {
+      // get start, length and strand of this instance
+      int sstart = (*lIter)->Start();
+      strand_modes sstrand =  (*lIter)->Strand();
+
+      // int seqLength = ((*lIter)->ParentSequence())->Length();
+      if ( sstart - pos >= 0 )
+      {
+        // add letter to counts
+        b = ((*lIter)->ParentSequence())->GetNucleotideAt(sstrand, sstart - pos);
+        cerr << b;
+        if ( b != -1 )
+        {
+          vACGT[b]++;
+        }
+        else
+        {
+          // this site false outside the range
+          getOut = true;
+          break;
+        }
+
+      }else{
+        // this site false outside the range
+        getOut = true;
+        break;
+      }
+      
+      lIter++;
+    }
+    // check if the iterations were stopped because the instances fall outside the range
+    if ( getOut )
+    {
+      pos--;
+      return pos;
+    }
+
+    // compute score from counts
+    double sum = 0;
+    for (int i=0; i<4; i++)
+      sum += vACGT[i];
+    for (int i=0; i<4; i++)
+      vACGT[i] = vACGT[i]/sum;
+    score = 2.0;
+    for (int i=0; i<4; i++)
+      score += vACGT[i] * (log(vACGT[i]) / log(2.0));
+    
+    cerr << "-" << pos << " --> CS: " << score << endl;
+      
+    if ( score > threshold ){
+      pos++;
+    }else{
+      pos--;
+      return pos;
+    }      
+  }
+  
+  return pos;
+}
+
+
+int
+MotifSamplerRun::CheckRightExtension(double threshold)
+{
+  double score = 2.0;
+  int pos = 1,
+    b = -1;
+  list < Instance * >::iterator lIter;
+  bool getOut = false;
+  vector<double> vACGT(4);
+
+  while ( score > threshold ){
+    // initialize counts
+    for (int i=0; i<4; i++)
+      vACGT[i] = 0.05;
+
+    // loop through all sites and select next positions
+    lIter = _pInstanceMap->begin();
+    while ( lIter != _pInstanceMap->end() )
+    {
+      // get start, length and strand of this instance
+      int sstart = (*lIter)->Start();
+      int slength = (*lIter)->Length();
+      strand_modes sstrand =  (*lIter)->Strand();
+
+      int seqLength = ((*lIter)->ParentSequence())->Length();
+      if ( sstart + slength + pos < seqLength )
+      {
+        // add letter to counts
+        b = ((*lIter)->ParentSequence())->GetNucleotideAt(sstrand, sstart + slength + pos);
+        cerr << b;
+        if ( b != -1 )
+        {
+          vACGT[b]++;
+        }
+        else
+        {
+          // this site false outside the range
+          getOut = true;
+          break;
+        }
+      }else{
+        // this site false outside the range
+        getOut = true;
+        break;
+      }
+      
+      lIter++;
+    }
+    // check if the iterations were stopped because the instances fall outside the range
+    if ( getOut )
+    {
+      pos--;
+      return pos;
+    }
+
+    // compute score from counts
+    // normalize
+    double sum = 0;
+    for (int i=0; i<4; i++)
+      sum += vACGT[i];   
+    for (int i=0; i<4; i++)
+      vACGT[i] = vACGT[i]/sum;
+    score = 2.0;
+    for (int i=0; i<4; i++)
+      score += vACGT[i] * (log(vACGT[i]) / log(2.0));
+    
+    cerr << "+" << pos << " --> CS: " << score << endl;
+      
+    if ( score > threshold ){
+      pos++;
+    }else{
+      pos--;
+      return pos;
+    }      
+  }
+  
+  return pos;
 }

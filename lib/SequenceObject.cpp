@@ -117,7 +117,7 @@ SequenceObject::GetSubSequenceVector(strand_modes s, int start, int length)
 
   if (start < 0 || ll < start + length)
   {
-    cerr << "Warning: start not within range of the sequence." << endl;
+    cerr << "Warning: start not within range of the sequence " << _id << ": " << ll << " = " << start << "<->" <<start + length << endl;
     return NULL;
   }
 

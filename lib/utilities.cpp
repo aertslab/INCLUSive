@@ -50,6 +50,52 @@ namespace INCLUSIVE {
   
   Description:
   
+  Date:         2003/11/10
+  Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+  
+******************************************************************************/
+  void 
+  Index2Site(string &rStr, int i, int L)
+  {
+    int index = i;      
+    int t[4];
+    for ( int j=L; j>0; j--)
+    {
+      int d = int(pow(4.0,j-1));
+      t[0] = 0; t[1] = d; t[2] = 2*d; t[3] = 3*d;
+      if ( index >= t[3] )
+      {
+        rStr.replace(L-j-1,1,1,'T');
+        index -= t[3];
+      }
+      else if( index >= t[2] )
+      { 
+        rStr.replace(L-j-1,1,1,'G');
+        index -= t[2];
+      }
+      else if( index >= t[1] )
+      { 
+        rStr.replace(L-j-1,1,1,'C');
+        index -= t[1];
+      }
+      else if( index >= t[1] )
+      { 
+        rStr.replace(L-j-1,1,1,'A');
+      }else{
+        rStr.replace(L-j-1,1,1,'n');
+      }
+    }
+    
+    return;
+  }
+  
+/******************************************************************************
+  Method: 
+  Class:        
+  Arguments: 
+  
+  Description:
+  
   Date:         2003/06/26
   Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
   

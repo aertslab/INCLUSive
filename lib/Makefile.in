@@ -139,8 +139,8 @@ INCLUDES = \
 
 AM_CXXFLAGS = \
 	 -Wall -Wimplicit -Wreturn-type -Wunused -Wswitch -Wcomment -Wuninitialized\
-   -Wparentheses -Wtraditional -Wpointer-arith -Wmissing-prototypes\
-   -static -s
+   -Wparentheses -Wpointer-arith -Wmissing-prototypes\
+   -static -g -p
 
 
 lib_LTLIBRARIES = libinclusive.la
@@ -148,6 +148,7 @@ lib_LTLIBRARIES = libinclusive.la
 libinclusive_la_SOURCES = \
 	BackgroundIO.cpp\
 	BackgroundModel.cpp\
+  BlockSamplerRun.cpp\
 	Distribution.cpp\
 	FastaIO.cpp\
   GFFWriter.cpp\
@@ -175,8 +176,8 @@ LTLIBRARIES = $(lib_LTLIBRARIES)
 
 libinclusive_la_DEPENDENCIES =
 am_libinclusive_la_OBJECTS = BackgroundIO.lo BackgroundModel.lo \
-	Distribution.lo FastaIO.lo GFFWriter.lo Instance.lo \
-	InstanceMap.lo MaskVector.lo MotifSamplerRun.lo \
+	BlockSamplerRun.lo Distribution.lo FastaIO.lo GFFWriter.lo \
+	Instance.lo InstanceMap.lo MaskVector.lo MotifSamplerRun.lo \
 	PriorMotifSamplerRun.lo PWMIO.lo PWM.lo RandomNumber.lo \
 	SequenceObject.lo SequenceComputation.lo utilities.lo
 libinclusive_la_OBJECTS = $(am_libinclusive_la_OBJECTS)
@@ -186,6 +187,7 @@ depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
 @AMDEP_TRUE@DEP_FILES = ./$(DEPDIR)/BackgroundIO.Plo \
 @AMDEP_TRUE@	./$(DEPDIR)/BackgroundModel.Plo \
+@AMDEP_TRUE@	./$(DEPDIR)/BlockSamplerRun.Plo \
 @AMDEP_TRUE@	./$(DEPDIR)/Distribution.Plo \
 @AMDEP_TRUE@	./$(DEPDIR)/FastaIO.Plo ./$(DEPDIR)/GFFWriter.Plo \
 @AMDEP_TRUE@	./$(DEPDIR)/Instance.Plo \
@@ -258,6 +260,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/BackgroundIO.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/BackgroundModel.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/BlockSamplerRun.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Distribution.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/FastaIO.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/GFFWriter.Plo@am__quote@

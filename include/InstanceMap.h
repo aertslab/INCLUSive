@@ -30,6 +30,9 @@ class InstanceMap {
   InstanceMap * erase(list<Instance *>::iterator iter);
   void ClearMap();
   
+  InstanceMap * ExtendLeft(int pos);
+  InstanceMap * ExtendRight(int pos);
+  
 };
 
 #endif

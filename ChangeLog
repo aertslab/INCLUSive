@@ -1,3 +1,34 @@
+2004-03-05 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+  * changed internal structure of Distribution class to be able to
+    process higher numbers.
+  
+2004-03-04 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+  * Made some changes to BlockSampler: 
+    - inclusion of root/reference sequence. In this sequence there is always a 
+      motif instance selected.
+  
+2004-02-26 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+  * Added BlockSamplerRun class to add changes/extension to
+    the MotifSamplerRun class. Among them are the definition of 
+    a root sequence in which the motif should be found.
+    
+2004-02-11 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+  * Started implementation of Block2MotifAligner. Use a local alignment strategy 
+    to find the best scoring common motif in a set of two conserved blocks.
+  
+2004-02-10 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+  * Added functions to extend InstanceMap to extend the map on left and right side
+  
+2004-02-06 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+  * Added BlockSampler, extension of the PhyloSampler to find conserved blocks 
+    in sets of homologuous sequences. The algorithm starts as 0 or 1 sampler 
+    and then extends the selected instances to find large conserved blocks among 
+    sets of homologuous sequences.
+
+2003-11-10 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+  * Added program to generate random sequences starting from
+    a given background model
+    
 2003-10-16 Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
   * Changed output signals (0 on succes, -1 elsewhere)
   

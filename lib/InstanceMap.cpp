@@ -92,36 +92,22 @@ void
   InstanceMap::ClearMap()
 {
 
-  // delete all instances in the list
-  list < Instance * >::iterator lIter = _pInstanceList->begin();
-  while (lIter != _pInstanceList->end())
-  {
+  if ( _pInstanceList != NULL )
+  {    
+    // delete all instances in the list
+    list < Instance * >::iterator lIter = _pInstanceList->begin();
+    while (lIter != _pInstanceList->end())
+    {
+      if ( *lIter != NULL )
+        delete(*lIter);
+      lIter++;
+    }
 
-    // cerr << "InstanceMap::ClearMap() clear content of iterator" << endl;
-    if ((*lIter != NULL))
-      delete(*lIter);
-    (*lIter) = NULL;
-    lIter++;
+    // cerr << "InstanceMap::ClearMap() delete current map." << endl;
+    delete
+      _pInstanceList;
   }
-
-  // cerr << "InstanceMap::ClearMap() size of list = " << _pInstanceList->size() << endl;
-
-  /* 
-   * lIter = _pInstanceList->begin();
-   * while ( lIter != _pInstanceList->end() )
-   * {          
-   * cerr << "InstanceMap::ClearMap() delete Instance from list" << endl; 
-   * cerr << "InstanceMap::ClearMap() size of list before erase = " << _pInstanceList->size() << endl;
-   * _pInstanceList->erase(lIter);
-   * cerr << "InstanceMap::ClearMap() size of list after erase = " << _pInstanceList->size() << endl;
-   * lIter++;
-   * }  
-   */
-
-  // cerr << "InstanceMap::ClearMap() delete current map." << endl;
-  delete
-    _pInstanceList;
-
+  
   // cerr << "InstanceMap::ClearMap() create new map." << endl;
   _pInstanceList = new list < Instance * >;
   _numberOfInstances = 0;
@@ -253,5 +239,49 @@ InstanceMap::erase(list < Instance * >::iterator iter)
   if ((*iter) != NULL)
     delete(*iter);
   _pInstanceList->erase(iter);
+  return this;
+}
+
+
+InstanceMap* 
+InstanceMap::ExtendLeft(int pos){
+  list<Instance *>::iterator lIter = _pInstanceList->begin();
+  while (lIter != _pInstanceList->end())
+  {
+    if ( !(*lIter)->CheckLeftExtension(pos) )
+      return this; // return without adjusting anything
+    lIter++;
+  }
+  
+  // now the instances can be extended
+  lIter = _pInstanceList->begin();
+  while (lIter != _pInstanceList->end())
+  {
+    (*lIter)->ExtendLeft(pos);
+    lIter++;
+  }
+  
+  return this;
+} 
+
+
+InstanceMap* 
+InstanceMap::ExtendRight(int pos){
+  list < Instance * >::iterator lIter = _pInstanceList->begin();
+  while (lIter != _pInstanceList->end())
+  {
+    if ( !(*lIter)->CheckRightExtension(pos) )
+      return this; // return without adjusting anything
+    lIter++;
+  }
+  
+  // now the instances can be extended
+  lIter = _pInstanceList->begin();
+    while (lIter != _pInstanceList->end())
+  {
+    (*lIter)->ExtendRight(pos);
+    lIter++;
+  }
+  
   return this;
 }

@@ -19,7 +19,7 @@ namespace INCLUSIVE {
 
   // utilities for sequence
   int Site2Index(SequenceObject *pSeq, strand_modes s, int start, int order);
-
+  void Index2Site(string &rStr, int i, int L);
   // scoring sequence
   void SegmentLogMatrixScore(ScoreVector &pmx,
     SequenceObject *pSeq, strand_modes s, PWM *pMatrix);

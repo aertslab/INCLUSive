@@ -55,6 +55,7 @@ class SequenceComputation{
     
     void UpdateCopyProbability(double prior, strand_modes STRAND);
     void UpdateFixedSizeCopyProbability(int maxN, double prior, strand_modes STRAND);
+    void FixCopyProbability(ScoreVector *pCopyProbValues, strand_modes STRAND);
   
     // start positions of selected instances
     void SampleInstanceStart(vector<int> & pAlignmentVector, int n, strand_modes STRAND);

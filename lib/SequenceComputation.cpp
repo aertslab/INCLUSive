@@ -267,12 +267,14 @@ SequenceComputation::UpdateInstanceExpWx(strand_modes STRAND)
     while (iter1 != _pMotifScore->end())
     {
       (*iter3) = exp((*iter1) - (*iter2)) * (*iter4);
+      // cerr << (*iter3) << " ";
       // augment iterators
       iter1++;
       iter2++;
       iter3++;
       iter4++;
     }
+    // cerr << endl;
   }
   // minus strand
   if (STRAND == both || STRAND == minus_strand)
@@ -692,6 +694,39 @@ SequenceComputation::UpdateFixedSizeCopyProbability(int nbr, double prior,
 }
 
 
+/******************************************************************************
+  Method: 
+  Class:        
+  Arguments: 
+  
+  Description:
+  
+  Date:         2003/06/26
+  Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+  
+******************************************************************************/
+void
+SequenceComputation::FixCopyProbability(ScoreVector *pCopyProbValues, strand_modes STRAND)
+{
+  uint l = pCopyProbValues->size();
+  if ( l != _pCopyProbDistr->size() )
+  {
+    _pCopyProbDistr->resize(l,0);
+    _pRevCopyProbDistr->resize(l,0);
+  }
+  
+  if ( STRAND == BOTH || STRAND == plus_strand )
+  {
+    for ( uint i=0; i<l; i++ )
+      (*_pCopyProbDistr)[i] = (*pCopyProbValues)[i];
+  }
+  else if ( STRAND == minus_strand )
+  {
+    for ( uint i=0; i<l; i++ )
+      (*_pRevCopyProbDistr)[i] = (*pCopyProbValues)[i];
+  }    
+  return;
+}
 
 /******************************************************************************
   Method: 
@@ -767,18 +802,29 @@ SequenceComputation::SampleInstanceStart(vector < int >&pAlignmentVector,
     pDist = new Distribution(_pRevExpWx);
   }
 
-  for (int i = 0; i < n; i++)
-  {
-    ndx = pDist->TakeSample();
-    pAlignmentVector[i] = ndx;
-    pDist->ApplyMask(ndx - _wlength + 1, 2 * _wlength);
-    // cerr << "DEBUG Update aligment vector: " << ndx << endl;
-  }
-
   if (pDist != NULL)
-    delete pDist;
-  pDist = NULL;
+  {
+    for (int i = 0; i < n; i++)
+    {
+      ndx = pDist->TakeSample();
+      pAlignmentVector[i] = ndx;
+      
+      if ( n > 1 )
+      {
+        pDist->ApplyMask(ndx - _wlength + 1, 2 * _wlength);
+        if ( pDist == NULL )
+          break; 
+      }
+      // cerr << "DEBUG Update aligment vector: " << ndx << endl;
+    }
 
+    delete pDist;
+    pDist = NULL;
+  }
+  else
+  {
+    cerr << "-- Warning -- SequenceComputation::SampleInstanceStart(): distribution is NULL." << endl;
+  }
   return;
 }
 
@@ -795,8 +841,7 @@ SequenceComputation::SampleInstanceStart(vector < int >&pAlignmentVector,
   
 ******************************************************************************/
 void
-SequenceComputation::SampleUniformInstanceStart(vector <
-                                                int >&pAlignmentVector, int n,
+SequenceComputation::SampleUniformInstanceStart(vector<int>& pAlignmentVector, int n,
                                                 strand_modes STRAND)
 {
   int ndx = -1;
@@ -822,15 +867,30 @@ SequenceComputation::SampleUniformInstanceStart(vector <
   {
     pDist = new Distribution(_pRevMask->GetMask());
   }
-  for (int i = 0; i < n; i++)
+  
+  if ( pDist != NULL )
   {
-    ndx = pDist->TakeSample();
-    pAlignmentVector[i] = ndx;
-    pDist->ApplyMask(ndx - _wlength + 1, 2 * _wlength);
-    // cerr << "DEBUG Update aligment vector: " << ndx << endl;
+    for (int i = 0; i < n; i++)
+    {
+      ndx = pDist->TakeSample();
+      pAlignmentVector[i] = ndx;
+      
+      if ( n > 1 )
+      {
+        pDist->ApplyMask(ndx - _wlength + 1, 2 * _wlength);
+        if ( pDist == NULL )
+          break;
+      }        
+      // cerr << "DEBUG Update aligment vector: " << ndx << endl;
+    }
+    delete pDist;
+    pDist = NULL;
   }
-  delete pDist;
-
+  else
+  {
+    cerr << "-- Warning -- SequenceComputation::SampleUniformInstanceStart(): distribution is NULL." << endl;
+  }
+  
   return;
 }
 
@@ -874,17 +934,29 @@ SequenceComputation::SelectBestInstanceStart(vector < int >&pAlignmentVector,
   {
     pDist = new Distribution(_pRevExpWx);
   }
-  for (int i = 0; i < n; i++)
-  {
-    ndx = pDist->SelectMax();
-    pAlignmentVector[i] = ndx;
-    pDist->ApplyMask(ndx - _wlength + 1, 2 * _wlength);
-    // cerr << "DEBUG Alignmentvector index " << ndx << " number " << i << endl;
-  }
 
-  if (pDist != NULL)
+  if ( pDist != NULL )
+  {
+    for (int i = 0; i < n; i++)
+    {
+      ndx = pDist->SelectMax();
+      pAlignmentVector[i] = ndx;
+      
+      if ( n > 1 )
+      {
+        pDist->ApplyMask(ndx - _wlength + 1, 2 * _wlength);
+        if ( pDist == NULL )
+          break;
+      }        
+      // cerr << "DEBUG Alignmentvector index " << ndx << " number " << i << endl;
+    }
     delete pDist;
-  pDist = NULL;
+    pDist = NULL;
+  }
+  else
+  {
+    cerr << "-- Warning -- SequenceComputation::SelectBestInstanceStart(): distribution is NULL." << endl;
+  }
   return;
 }
 
@@ -1051,14 +1123,14 @@ SequenceComputation::GetCopyProbabilityAt(int nbr, strand_modes STRAND)
 void
 SequenceComputation::SetMotifLength(int wLength)
 {
-  if (wLength != _wlength)
+  if ( _wlength != wLength)
   {
-    // cerr << "DEBUG define motif length" << endl;
+    // cerr << "DEBUG define new motif length" << wLength << " from " << _length << endl;
     _wlength = wLength;
 
     // update mask (last wLength - 1 positions set to zero);
-    _pMask->UpdateMask(_length - _wlength + 1, _wlength - 1, 0);
-    _pRevMask->UpdateMask(_length - _wlength + 1, _wlength - 1, 0);
+    _pMask->UpdateMask(_length - _wlength + 1, _wlength, 0);
+    _pRevMask->UpdateMask(_length - _wlength + 1, _wlength, 0);
   }
   return;
 }

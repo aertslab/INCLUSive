@@ -9,14 +9,15 @@ INCLUDES =\
 
 AM_CXXFLAGS =\
 	 -Wall -Wimplicit -Wreturn-type -Wunused -Wswitch -Wcomment -Wuninitialized\
-   -Wparentheses -Wtraditional -Wpointer-arith -Wmissing-prototypes\
-   -static -s
+   -Wparentheses -Wpointer-arith -Wmissing-prototypes\
+   -static -g -p
 
 lib_LTLIBRARIES = libinclusive.la
 
 libinclusive_la_SOURCES = \
 	BackgroundIO.cpp\
 	BackgroundModel.cpp\
+  BlockSamplerRun.cpp\
 	Distribution.cpp\
 	FastaIO.cpp\
   GFFWriter.cpp\

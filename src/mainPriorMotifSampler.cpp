@@ -379,7 +379,7 @@ main(int argc, char *argv[])
         delete str3;
         
         // if ( exp(D1 - D2) >= 1 )
-        if ( value < threshold && value2 > wLength/2 )
+        if ( value2 > wLength/2 )
         {
           // write results to file        
           // define name of the motif model
@@ -439,6 +439,12 @@ main(int argc, char *argv[])
             pComment->append("kl: ", 4);
             // convert number
             sprintf(pTmpChar, "%1.4f", value);
+            pComment->append(pTmpChar);
+            
+            pComment->append("\t", 1);
+            pComment->append("sum_weights: ", 4);
+            // convert number
+            sprintf(pTmpChar, "%2.4f", value2);
             pComment->append(pTmpChar);
             
             // write comment string on GFF output
@@ -546,19 +552,18 @@ instructions()
   cout << "Version " << VERSION << endl;
   cout << "Questions and Remarks: <gert.thijs@esat.kuleuven.ac.be>" << endl
     << endl;
-} void
+} 
 
-
-
+void
 version()
 {
   cout << endl;
   cout << "INCLUSive -- PriorMotifSampler (stand alone C++ version)" << endl;
   cout << "  Version " << VERSION << endl;
-} void
+} 
 
 
-
+void
 cleanup()
 {
   if (fastaFile != NULL)

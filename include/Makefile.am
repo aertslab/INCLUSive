@@ -9,6 +9,7 @@ libinclusive_includedir = $(pkgincludedir)
 libinclusive_include_DATA = \
 	BackgroundIO.h\
 	BackgroundModel.h\
+  BlockSamplerRun.h\
 	Distribution.h\
 	FastaIO.h\
   GFFWriter.h\

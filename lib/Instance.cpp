@@ -132,3 +132,96 @@ Instance::~Instance()
   _pSeqName = NULL;
   
 }
+
+
+bool Instance::CheckLeftExtension(int pos){
+  if ( _start - pos < 0 ){
+    cerr << "--Warning-- Instance::ExtendLeft(): Unable to extend site to left." << endl;
+    return false;
+  }
+  
+  return true;
+}
+
+
+Instance* Instance::ExtendLeft(int pos){
+  // change start position ans site length
+  _start = _start - pos;
+  _length += pos;
+  
+  // update site
+  if (_pSite != NULL)
+    delete _pSite;
+  // cerr << "DEBUG: Instance::ExtendLeft(int pos) " << pos << " -> " << _start << " " << _length << endl;
+  _pSite = _pParentSequence->GetSubSequenceVector(_strand, _start, _length);
+  
+  // update site string
+  _pSiteString->resize(_length);
+  for (int i = 0; i < _length; i++)
+    {
+      switch ((*_pSite)[i])
+      {
+      case 0:
+        _pSiteString->replace(i,1,"A");
+        break;
+      case 1:
+        _pSiteString->replace(i,1,"C");
+        break;
+      case 2:
+        _pSiteString->replace(i,1,"G");
+        break;
+      case 3:
+        _pSiteString->replace(i,1,"T");
+        break;
+      default:
+        _pSiteString->replace(i,1,"N");
+      }
+    }
+  
+  return this;
+}
+
+
+bool Instance::CheckRightExtension(int pos){
+  if ( _start + _length + pos > _pParentSequence->Length() ){
+    cerr << "--Warning-- Instance::ExtendRight(): Unable to extend site to right." << endl;
+    return false;
+  }
+  
+  return true;
+}
+
+  
+Instance*  Instance::ExtendRight(int pos){
+  // change length of the site
+  _length += pos;
+  
+  // update site
+  if (_pSite != NULL)
+    delete _pSite;
+
+  // cerr << "DEBUG: Instance::ExtendRight(int pos) " << pos << " -> " << _start << " " << _length << endl;
+  _pSite = _pParentSequence->GetSubSequenceVector(_strand, _start, _length);
+
+  for (int i = _length-pos; i < _length; i++)
+    {
+      switch ((*_pSite)[i])
+      {
+      case 0:
+        _pSiteString->append("A");
+        break;
+      case 1:
+        _pSiteString->append("C");
+        break;
+      case 2:
+        _pSiteString->append("G");
+        break;
+      case 3:
+        _pSiteString->append("T");
+        break;
+      default:
+        _pSiteString->append("N");
+      }
+    }
+  return this;
+}

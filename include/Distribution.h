@@ -8,12 +8,13 @@
 class Distribution {
  private:
   bool _normalized;
-  vector<float> *_dist;
+  vector<double> *_dist;
   RandomNumber _rn;
   bool _Normalize();
 
  public:
   Distribution(int length, float *pArray);
+  Distribution(int length, int *pArray);
   Distribution(int length, double *pArray);
   Distribution(vector<float> *pArray);
   Distribution(vector<double> *pArray);

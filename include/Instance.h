@@ -39,6 +39,13 @@ class Instance{
   void SetID(string *pId){ _pId = pId; return;};
   Instance * SetScore(double score){ _score = score; return this;};
   Instance * SetSeqName(string *pName){_pSeqName = pName; return this;};
+  Instance * ExtendLeft(int pos);
+  Instance * ExtendRight(int pos);
+  
+  bool CheckLeftExtension(int pos);
+  bool CheckRightExtension(int pos);
+
+  
 };
 
 

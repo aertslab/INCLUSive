@@ -35,6 +35,7 @@ class PWM{
 
   double GetValueAt(int i, int j);
   double GetPseudoCountAt(int i);
+  char GetConsensusSymbolAt(int index);
   
   double ConsensusScore();
   double InformationContent(double *snf);
@@ -52,6 +53,9 @@ class PWM{
   PWM * RebuildMatrix(int W, Matrix pM);
   PWM * SetScore(double sc);
 
+  // sub matrix selection
+  PWM * SubMatrix(int index, int length);
+  
 };
 
 

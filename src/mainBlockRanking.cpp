@@ -1,8 +1,6 @@
 #include "utilities.h"
 #include "PWMIO.h"
 #include "PWM.h"
-#include "BackgroundIO.h"
-#include "BackgroundModel.h"
 
 // c++ includes
 #include <list>
@@ -17,7 +15,7 @@
 #include <math.h>
 #include <cstring>
 
-#define OPTIONS "hd:i:m:b:r:t:o:s:v"
+#define OPTIONS "hd:i:r:t:o:s:v"
 #define VERSION "3.0"
 
 
@@ -25,19 +23,17 @@ void instructions();
 void version();
 void cleanup();
 string *matrixFile = NULL,
-  *dbFile = NULL,
-  *outputFile = NULL,
-  *bgFile = NULL;
-
+  *outputFile = NULL;
 
 int
 main(int argc, char *argv[])
 {
   char c;
   bool bOut = false,
-    bMatrix = false,
-    bBackground = false;
-  double threshold = 0.4;
+    bMatrix = false;
+  double threshold = 0.4,
+    score = 0,
+    maxScore = 0;
   int shift = 1;
   int rank = 5;
   int mode = 0;
@@ -54,19 +50,8 @@ main(int argc, char *argv[])
       matrixFile = new string(optarg);
       bMatrix = true;
       break;
-    case 'b':
-      bgFile = new string(optarg);
-      bBackground = true;
-      break;
     case 'r':
       rank = atoi(optarg);
-      break;
-    case 'm':
-      mode = atoi(optarg);
-      if (mode < 0 || mode > 2)
-      {
-        mode = 0;
-      }
       break;
     case 't':
       threshold = (double) atof(optarg);
@@ -87,10 +72,11 @@ main(int argc, char *argv[])
       instructions();
       exit(-1);
     default:
-      cerr << "MotifSampler: Error in getopt() function" << endl;
+      cerr << "BlockRanking: Error in getopt() function" << endl;
       exit(-1);
     }
   }
+
   if (!bMatrix || !bOut)
   {
     instructions();
@@ -98,25 +84,6 @@ main(int argc, char *argv[])
     exit(-1);
   }
 
-  // open background file to read single nucleotide frequency
-  double snf[4];
-  if ( bBackground )
-  {
-    BackgroundIO *bgIO = new BackgroundIO(*bgFile, READ);
-    BackgroundModel *pBgModel = bgIO->ReadBackgroundModel();
-    delete bgIO;
-
-    // store snf
-    for (int i = 0; i < 4; i++)
-      snf[i] = pBgModel->GetSnfValueAt(i);
-    delete pBgModel;
-  }
-  else
-  {
-    // cerr << "Using default value for single nucleotide frequency [0.25 0.25 0.25 0.25]" << endl;
-    for (int i = 0; i < 4; i++)
-      snf[i] = 0.25;
-  }
   // open file for output writing if necessarry
   PWMIO *pwmFile = new PWMIO(outputFile, WRITE);
   
@@ -129,56 +96,34 @@ main(int argc, char *argv[])
   // open matrix stream reader
   if (!pwmIO->IsOpen())
   {
-    cerr << "MotifRanking: Unable to open matrix model file: " << *matrixFile
+    cerr << "BlockRanking: Unable to open matrix model file: " << *matrixFile
       << endl;
     cleanup();
     exit(-1);
   }
 
   // add matrices to list
-  while (pwmIO->IsOpen() && (myMatrix = pwmIO->ReadMatrix()))
+  while ( pwmIO->IsOpen() )
   {
-    matrixList.push_back(myMatrix);
+    myMatrix = pwmIO->ReadMatrix();
+    if ( myMatrix )
+      matrixList.push_back(myMatrix);
   }
-
   // close matrix reader
   delete pwmIO;
+
   if ((int) matrixList.size() < rank)
   {
     cerr <<
-      "MotifRanking: Number of matrices in a list is samller than the requested number of motifs."
+      "BlockRanking: Number of matrices in a list is samller than the requested number of motifs."
       << endl;
     cleanup();
     delete myMatrix;
   }
-  double score = 0,
-    maxScore = 0;
 
-  // set scores if asked for CS or LL
-  matIter = matrixList.begin();
-  if (mode != 0)
-  {
-    while (matIter != matrixList.end())
-    {
-
-      // cerr << "Updating score to mode: " << mode << endl;
-      if (mode == 1)
-      {
-        score = (*matIter)->ConsensusScore();
-      }
-      else if (mode == 2)
-      {
-        score = (*matIter)->InformationContent(snf);
-      }
-      else
-      {
-        break;
-      }
-      (*matIter)->SetScore(score);
-      matIter++;
-    }
-  }
-  int count = 0;
+  int count = 0,
+    shift1 = 0,
+    shift2 = 0;
   for (int i = 0; i < rank; i++)
   {
 
@@ -209,6 +154,10 @@ main(int argc, char *argv[])
       matIter = matrixList.begin();
       while (matIter != matrixList.end())
       {
+        shift1 = (int)(0.4 * myMatrix->Length());
+        shift2 = (int)(0.4 * (*matIter)->Length());
+        shift = shift1 < shift2 ? shift1 : shift2;
+
         mi =
           (myMatrix->MutualInformation((*matIter), shift) +
            (*matIter)->MutualInformation(myMatrix, shift)) / 2;
@@ -255,7 +204,7 @@ void
 instructions()
 {
   cout << endl;
-  cout << "Usage:" << " MotifRanking <ARGS>" << endl;
+  cout << "Usage:" << " BlockRanking <ARGS>" << endl;
   cout << endl;
   cout << " Required Arguments" << endl;
   cout <<
@@ -283,7 +232,7 @@ instructions()
   cout << "  -s <value>          Maximal allowed shift between motif models."
     << endl;
   cout << endl;
-  cout << "  -v                  Version of MotifRanking" << endl;
+  cout << "  -v                  Version of BlockRanking" << endl;
   cout << endl;
   cout << "Version " << VERSION << endl;
   cout << "Questions and Remarks: <gert.thijs@esat.kuleuven.ac.be>" << endl
@@ -293,7 +242,7 @@ instructions()
 version()
 {
   cout << endl;
-  cout << "INCLUSive -- MotifRanking (stand alone C++ version)" << endl;
+  cout << "INCLUSive -- BlockRanking (stand alone C++ version)" << endl;
   cout << "  version " << VERSION << endl;
 } void
 

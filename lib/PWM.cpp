@@ -90,10 +90,15 @@ PWM::PWM(int W, Matrix pM)
     }
   }
 
+  // set pseudocounts to very small value
+    for (int j = 0; j < 4; j++)
+    _pPseudo[j] = 0.000001;
+
   _score = 0;
 
   // set identifier and consensus
-  _consensus = NULL;;
+  _consensus = NULL;
+  _ComputeConsensus();
   _id = NULL;
 
 }
@@ -144,7 +149,8 @@ PWM::PWM(int W, Matrix pM, double *snf)
   }
 
   // set identifier and consensus
-  _consensus = NULL;;
+  _consensus = NULL;
+  _ComputeConsensus();
   _id = NULL;
 
 }
@@ -191,10 +197,15 @@ PWM::PWM(int W, Counts pC)
     }
   }
 
+  // set pseudocounts to very small value
+    for (int j = 0; j < 4; j++)
+    _pPseudo[j] = 0.000001;
+
   _score = 0;
 
   // set identifier and consensus
-  _consensus = NULL;;
+  _consensus = NULL;
+  _ComputeConsensus();
   _id = NULL;
 
 }
@@ -246,7 +257,8 @@ PWM::PWM(int W, Counts pC, double *snf)
   _score = 0;
 
   // set identifier and consensus
-  _consensus = NULL;;
+  _consensus = NULL;
+  _ComputeConsensus();
   _id = NULL;
 
 }
@@ -327,10 +339,10 @@ PWM::PWM(InstanceMap * pMap, double *snf, int w)
 
   }
 
-  delete[]pC;
+  delete[] pC;
 
-  // 
-  _consensus = NULL;;
+  _consensus = NULL;
+  _ComputeConsensus();
   _id = NULL;
 }
 
@@ -356,19 +368,16 @@ PWM::~PWM()
 
   // delete identifiers
   if (_id != NULL)
-  {
-    // cerr << "PWM::~PWM() deleting id:" << *_id << endl;
     delete _id;
-  }
   _id = NULL;
 
   if (_consensus != NULL)
-  {
-    // cerr << "PWM::~PWM() deleting consensus:" << *_consensus << endl;
     delete _consensus;
-  }
   _consensus = NULL;
 
+  if ( _pPseudo != NULL )
+    delete[] _pPseudo;
+  
 }
 
 
@@ -629,10 +638,17 @@ double
 PWM *
 PWM::SetConsensus(string * cons)
 {
-  if (_consensus != NULL)
-    delete _consensus;
-
-  _consensus = new string(*cons);
+  // cerr << "DEBUG PWM::SetConsensus(): --" << *cons << "--" << endl;
+  if ( cons->size() == (uint)_length )
+  {
+    if (_consensus != NULL)
+      delete _consensus;
+    _consensus = new string(*cons);
+  }
+  else
+  {
+    _ComputeConsensus();
+  }
   return this;
 }
 
@@ -694,8 +710,7 @@ void
 {
   // reset consensus string
   if (_consensus != NULL)
-    delete
-      _consensus;
+    delete _consensus;
 
   _consensus = new string(_length, 'n');
 
@@ -734,11 +749,11 @@ void
     int
       index = 0;
     // add letter to string
-    if (m1 > 0.65)
+    if (m1 > 0.66)
     {
       _consensus->replace(i, 1, 1, a[i1]);
     }
-    else if (m2 > 0.35)
+    else if (m2 > 0.33)
     {
       if (i1 < i2)
       {
@@ -891,12 +906,12 @@ double
   int
     leftShift = 0,
     rightShift = 0,
-    a1,
-    a2,
-    b1,
-    b2,
-    i,
-    j;
+    a1 = 0,
+    a2 = 0,
+    b1 = 0,
+    b2 = 0,
+    i = 0,
+    j = 0;
   int
     Ws = sbjct->Length();
   double
@@ -1014,4 +1029,47 @@ double
   
   return mi;
 
+}
+
+
+char 
+PWM::GetConsensusSymbolAt(int index)
+{
+  if ( index < 0 || index > _length )
+  {
+    return 'n';
+  }
+  if ( _consensus == NULL || _consensus->size() != (uint)_length)
+    _ComputeConsensus();
+  
+  return _consensus->at(index);
+}
+
+
+PWM*
+PWM::SubMatrix(int index, int length)
+{
+  PWM * pwm = NULL;
+  
+  if ( index < 0 || length < 0 || length > _length || index + length > _length )
+  {
+    cerr << "Warning PWM::SubMatrix: Unable to create submatrix, index out of bounds." << endl;
+    return NULL;
+  }    
+    
+  // define sub matrix
+  Matrix pMatrix = new double[length][4];
+  for (int i = 0; i < length; i++)
+  {
+    for (int j = 0; j < 4; j++)
+    {
+      pMatrix[i][j] = _pMatrix[index+i][j];
+    }
+  }
+  
+  // create new matrix
+  pwm = new PWM(length, pMatrix);
+  // cerr << "DEBUG: PWM::SubMatrix(): New matrix: " << *(pwm->GetConsensus()) << endl;
+
+  return pwm;
 }

@@ -104,18 +104,21 @@ void
 void
   MaskVector::UpdateMask(int start, int w, int value)
 {
-  int
-    end = start + w;
+  int end = start + w;
   if (start < 0)
     start = 0;
   if (start < 0)
     start = 0;
   if (end > (int) _mask->size())
     end = (int) _mask->size();
+
   for (int i = start; i < end; i++)
-  {
     (*_mask)[i] = value;
-  }
+
+  //~ for (uint i = 0; i < _mask->size(); i++)
+    //~ cerr << (*_mask)[i] << " ";
+  //~ cerr << endl;
+  
   return;
 }
 
