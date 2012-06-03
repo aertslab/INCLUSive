@@ -6,9 +6,15 @@
 #include "PWM.h"
 #include "BackgroundModel.h"
 
+/*
+ * Here the INCLUSive namespace is defined where all 
+ * auxillary function are declared that could not be
+ * assigned to a specific class 
+ */
+
 namespace INCLUSIVE {
 
-  // general usage functions
+  // general mathematical functions  
   double SumArray(const double *pt, const int start, const int number);
   double SumArray(vector<double>::iterator pt, const int start, const int number);
   double SumArray(vector<double> *pt, const int start, const int number);
@@ -17,22 +23,25 @@ namespace INCLUSIVE {
   double LogNormDirichlet(vector<double>* pVec);
   double LogDirichlet(vector<double>* pParam, vector<double>* pVec);
 
-  // utilities for sequence
+  // utilities to transform short sequences to indices and vice versa
   int Site2Index(SequenceObject *pSeq, strand_modes s, int start, int order);
   void Index2Site(string &rStr, int i, int L);
-  // scoring sequence
-  void SegmentLogMatrixScore(ScoreVector &pmx,
-    SequenceObject *pSeq, strand_modes s, PWM *pMatrix);
-  void SegmentLogBackgroundScore(ScoreVector &pbx,
-    SequenceObject *pSeq, strand_modes s, BackgroundModel *pBgM, int w);
-  double SequenceLogBackgroundScore(SequenceObject *pSeq,
-    strand_modes s, BackgroundModel *pBgM);
-  double ComputeNInstancesProbability(ScoreVector *pExpWx, 
-    int n, int L, int W);
+  
+	// specific sequence scoring functions 
+  void SegmentLogMatrixScore(ScoreVector &pmx, SequenceObject *pSeq, strand_modes s, PWM *pMatrix);
+  void SegmentLogBackgroundScore(ScoreVector &pbx, SequenceObject *pSeq, strand_modes s, BackgroundModel *pBgM, int w);
+  double SequenceLogBackgroundScore(SequenceObject *pSeq, strand_modes s, BackgroundModel *pBgM);
+  double SequenceLogBackgroundScore(SequenceObject *pSeq, int start, int length, strand_modes s, BackgroundModel *pBgM);
 
+  double ComputeNInstancesProbability(ScoreVector *pExpWx, int n, int L, int W);
+  void ComputePriorDistribution(ScoreVector &pPrior, int n, double prior);
+
+  // utility to reset scoring vector
   void ResetScoreVector(ScoreVector &pVec);
   void ResetScoreVector(ScoreVector &pVec, int value);
-  void ComputePriorDistribution(ScoreVector &pPrior, int n, double prior);
+
+  // faculteit
+  int fac(int n);
   
 }
 

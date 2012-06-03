@@ -3,6 +3,7 @@
 
 #include <iostream>
 
+// constants of the random number generator
 #define  RAND1  30269
 #define  RAND2  30307
 #define  RAND3  30323  

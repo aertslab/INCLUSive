@@ -32,9 +32,9 @@ class SequenceObject{
   SequenceObject * SetDescription(string *desc);
 
   // inspectors
-  string * GetID();
-  string * GetDescription();
-  int Length();
+  string * GetID(){return &_id;};
+  string * GetDescription(){return &_description;};
+  int Length(){return _length;};
   bool CheckSequence();
   string * GetSequenceString(strand_modes s);
   string * GetSubSequenceString(strand_modes s, int start, int length);

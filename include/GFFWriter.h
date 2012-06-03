@@ -23,7 +23,7 @@ class GFFWriter
 	//   
 	void WriteInstance(Instance *pInst, string *source);
   void AddComment(string *pComStr);
-  
+  void AddComment(const string &input);//
 };
 
 #endif

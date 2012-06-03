@@ -10,9 +10,11 @@
 
 class SequenceComputation{
   private:
-    SequenceObject *_pSeqObj; 
-    int _wlength, _length;
-    bool correct;
+    SequenceObject *_pSeqObj;
+    BackgroundModel * _pBgModel;
+    int _wlength; // current motif length
+		int _length;  // sequence length
+    bool _correct;
   
     // internal score vectors
     ScoreVector *_pMotifScore;
@@ -30,7 +32,10 @@ class SequenceComputation{
  
     ScoreVector *_pCopyProbDistr;
     ScoreVector *_pRevCopyProbDistr;
-    ScoreVector *_pPriorDistr;
+    // ScoreVector *_pPriorDistr;
+    vector<Distribution*> * _priorDistrs; //
+    int _maxInst;
+    bool _sampling; //
   
   public:
     // constructor
@@ -38,9 +43,16 @@ class SequenceComputation{
     
     // destructor
     ~SequenceComputation();
+
+    // define sequence related background model
+    void SetBackgroundModel(BackgroundModel *pBg);
   
     // update motif length
     void SetMotifLength(int wLength);
+
+    // link information on prior from main
+    void LinkNbrInstPrior(int max, vector<Distribution*>* distrs);
+    void SetNbrInstSampling(bool sample){ _sampling = sample; return;};
   
     // update scores
     void UpdateInstanceMotifScore(PWM *pMotif, strand_modes STRAND);
@@ -53,9 +65,10 @@ class SequenceComputation{
     void SetMask(MaskVector *pMask, strand_modes STRAND);
     void ApplyMask(strand_modes STRAND);
     
-    void UpdateCopyProbability(double prior, strand_modes STRAND);
-    void UpdateFixedSizeCopyProbability(int maxN, double prior, strand_modes STRAND);
-    void FixCopyProbability(ScoreVector *pCopyProbValues, strand_modes STRAND);
+    //void UpdateCopyProbability(double prior, strand_modes STRAND);
+    //void UpdateFixedSizeCopyProbability(int maxN, double prior, strand_modes STRAND);
+    void UpdateCopyProbability(strand_modes STRAND);//
+    // void FixCopyProbability(ScoreVector *pCopyProbValues, strand_modes STRAND); // BlockSamplerRun
   
     // start positions of selected instances
     void SampleInstanceStart(vector<int> & pAlignmentVector, int n, strand_modes STRAND);
@@ -63,13 +76,17 @@ class SequenceComputation{
     void SelectBestInstanceStart(vector<int> & pAlignmentVector, int n, strand_modes STRAND);
 
     // inspectors
-    int GetEstimatedNumberInstances(strand_modes STRAND);
-    double GetWxAt(int ndx, strand_modes STRAND);
+    SequenceObject * ParentSequence() const {return _pSeqObj;};
+		int GetMotifLength() const {return _wlength;};
+    double GetWxAt(int ndx, strand_modes STRAND) const;
+    double GetMotifScoreAt(int ndx, strand_modes STRAND) const ;
+    double GetBackgroundScoreAt(int ndx, strand_modes STRAND) const;
+    double GetLogBackgroundScore(strand_modes STRAND) const;
     MaskVector * GetMask(strand_modes STRAND);    
     ScoreVector * GetCopyProbability(strand_modes STRAND);
+    //int GetEstimatedNumberInstances(strand_modes STRAND);
+    int GetNumberInstances(strand_modes STRAND);//
     double GetCopyProbabilityAt(int nbr, strand_modes STRAND);
-    double GetLogBackgroundScore(strand_modes STRAND);
-    SequenceObject * ParentSequence(){return _pSeqObj;};
     double LogLikelihoodScore(vector<int> *pAlign, strand_modes STRAND);
   
 };

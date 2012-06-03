@@ -11,6 +11,7 @@ class BackgroundIO{
   ifstream _ifs;
   ofstream _ofs;
   string _pLine;
+  string * _pError;
   
  public:
   // constructor 
@@ -20,6 +21,7 @@ class BackgroundIO{
 
   // inspectors
   bool IsOpen();
+  string * GetError(){return _pError;}
   
   BackgroundModel * ReadBackgroundModel();
   int WriteBackgroundModel(BackgroundModel *bgM);

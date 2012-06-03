@@ -1,9 +1,11 @@
+// 21 july 2009 - 3.1.5
+
 #ifndef fastaio_include_declared
 #define fastaio_include_declared
 
 #include "inclusive.h"
 #include "SequenceObject.h"
-
+#include <sstream> //
 
 class FastaIO {
 
@@ -21,6 +23,7 @@ class FastaIO {
   bool IsOpen();
   bool HasNext();
   SequenceObject * NextSequence();
+  double * ReadDirichlet(); // MotifComparison
 
   // adaptors
   void Close();

@@ -8,74 +8,28 @@ INCLUDES =\
 	 -I../include
 
 AM_CXXFLAGS =\
-	 -Wall -Wimplicit -Wreturn-type -Wunused -Wswitch -Wcomment -Wuninitialized\
-   -Wparentheses -Wpointer-arith -Wmissing-prototypes\
-   -static -g -p
+	 -Wall\
+	 -g -pg
 
-bin_PROGRAMS = \
-	CreateBackgroundModel\
-	BackgroundScore\
-	MotifComparison\
-	MotifLocator\
-	MotifRanking\
-	MotifScanner\
-	MotifSampler\
-	PriorMotifSampler\
-  PhyloSampler\
-  BlockSampler\
-  BlockRanking\
-  Block2MotifAligner\
-  MotifModelShuffler
+lib_LTLIBRARIES = libinclusive.la
 
-# here are the sources of these programs
-CreateBackgroundModel_SOURCES = mainCreateBackgroundModel.cpp
-CreateBackgroundModel_LDFLAGS = 
-CreateBackgroundModel_LDADD = ../lib/libinclusive.la
+libinclusive_la_SOURCES = \
+	BackgroundIO.cpp\
+	BackgroundModel.cpp\
+	Distribution.cpp\
+	FastaIO.cpp\
+	GFFWriter.cpp\
+	Instance.cpp\
+	InstanceMap.cpp\
+	MaskVector.cpp\
+	MotifSamplerRun.cpp\
+	PWM.cpp\
+	PWMIO.cpp\
+	RandomNumber.cpp\
+	SequenceComputation.cpp\
+	SequenceObject.cpp\
+	utilities.cpp
 
-BackgroundScore_SOURCES = mainBackgroundScore.cpp
-BackgroundScore_LDFLAGS = 
-BackgroundScore_LDADD = ../lib/libinclusive.la
+libinclusive_la_LIBADD =
 
-MotifComparison_SOURCES = mainMotifComparison.cpp
-MotifComparison_LDFLAGS = 
-MotifComparison_LDADD = ../lib/libinclusive.la
-
-MotifLocator_SOURCES = mainMotifLocator.cpp
-MotifLocator_LDFLAGS = 
-MotifLocator_LDADD = ../lib/libinclusive.la
-
-MotifRanking_SOURCES = mainMotifRanking.cpp
-MotifRanking_LDFLAGS = 
-MotifRanking_LDADD = ../lib/libinclusive.la
-
-MotifScanner_SOURCES = mainMotifScanner.cpp
-MotifScanner_LDFLAGS = 
-MotifScanner_LDADD = ../lib/libinclusive.la
-
-MotifSampler_SOURCES = mainMotifSampler.cpp
-MotifSampler_LDFLAGS = 
-MotifSampler_LDADD = ../lib/libinclusive.la
-
-PriorMotifSampler_SOURCES = mainPriorMotifSampler.cpp
-PriorMotifSampler_LDFLAGS = 
-PriorMotifSampler_LDADD = ../lib/libinclusive.la
-
-PhyloSampler_SOURCES = mainPhyloSampler.cpp
-PhyloSampler_LDFLAGS = 
-PhyloSampler_LDADD = ../lib/libinclusive.la
-
-BlockSampler_SOURCES = mainBlockSampler.cpp
-BlockSampler_LDFLAGS = 
-BlockSampler_LDADD = ../lib/libinclusive.la
-
-BlockRanking_SOURCES = mainBlockRanking.cpp
-BlockRanking_LDFLAGS = 
-BlockRanking_LDADD = ../lib/libinclusive.la
-
-Block2MotifAligner_SOURCES = mainBlock2MotifAligner.cpp
-Block2MotifAligner_LDFLAGS = 
-Block2MotifAligner_LDADD = ../lib/libinclusive.la
-
-MotifModelShuffler_SOURCES = mainMotifModelShuffler.cpp
-MotifModelShuffler_LDFLAGS = 
-MotifModelShuffler_LDADD = ../lib/libinclusive.la
+libinclusive_la_LDFLAGS =

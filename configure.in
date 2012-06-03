@@ -4,33 +4,34 @@ dnl If you don't want it to overwrite it,
 dnl 	Please disable it in the Anjuta project configuration
 
 AC_INIT(configure.in)
-AM_INIT_AUTOMAKE(INCLUSive, 3.0)
+AM_INIT_AUTOMAKE(INCLUSive, 3.1.5)
 AM_CONFIG_HEADER(config.h)
 
 AC_ISC_POSIX
+CXXFLAGS=""
+AC_SUBST(CXXFLAGS)
 AC_PROG_CXX
 AM_PROG_CC_STDC
 AC_HEADER_STDC
 AM_PROG_LIBTOOL
 
 dnl Checks for programs.
+
+
 dnl Checks for libraries.
+
+
 dnl Checks for header files.
+
+
 dnl Checks for typedefs, structures, and compiler characteristics.
+
+
 dnl Checks for library functions.
+
+
 dnl Checks for Additional stuffs.
 
-dnl Languages which your application supports
-dnl ALL_LINGUAS=""
-dnl AM_GNU_GETTEXT
-dnl AM_GNU_GETTEXT_VERSION(0.10.40)
-
-dnl Set PACKAGE_LOCALE_DIR in config.h.
-if test "x${prefix}" = "xNONE"; then
-  AC_DEFINE_UNQUOTED(PACKAGE_LOCALE_DIR, "${ac_default_prefix}/${DATADIRNAME}/locale")
-else
-  AC_DEFINE_UNQUOTED(PACKAGE_LOCALE_DIR, "${prefix}/${DATADIRNAME}/locale")
-fi
 
 
 dnl Set PACKAGE SOURCE DIR in config.h.
@@ -44,7 +45,7 @@ else
 fi
 
 dnl Set PACKAGE DATA & DOC DIR
-packagedatadir=share/${PACKAGE}
+packagedatadir=share
 packagedocdir=doc/${PACKAGE}
 
 dnl Set PACKAGE DIRS in config.h.
@@ -91,7 +92,8 @@ AC_DEFINE_UNQUOTED(PACKAGE_SOURCE_DIR, "${packagesrcdir}")
 
 AC_OUTPUT([
 Makefile
-lib/Makefile
 include/Makefile
 src/Makefile
+applications/Makefile
 ])
+

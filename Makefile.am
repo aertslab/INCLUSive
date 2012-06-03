@@ -3,7 +3,7 @@
 ## If you don't want it to overwrite it,
 ## 	Please disable it in the Anjuta project configuration
 
-SUBDIRS = include lib src
+SUBDIRS = include src applications
 
 libinclusivedocdir = ${prefix}/doc/INCLUSive
 libinclusivedoc_DATA = \
@@ -14,14 +14,16 @@ libinclusivedoc_DATA = \
 	INSTALL\
 	NEWS\
 	TODO
-  
+
 EXTRA_DIST = $(libinclusivedoc_DATA)
 
 
-# Copy all the spec files. Of course, only one is actually used.
+
+# Copy all the spec files. Of cource, only one is actually used.
 dist-hook:
 	for specfile in *.spec; do \
 		if test -f $$specfile; then \
 			cp -p $$specfile $(distdir); \
 		fi \
 	done
+

@@ -20,8 +20,10 @@ class Instance{
  
  
  public:
+	 // constructors
   Instance(Instance &copyInstance);
   Instance(SequenceObject *pSeqObj, strand_modes s, int start, int length);
+  // destructor
   ~Instance();
 
   // inspectors
@@ -34,6 +36,9 @@ class Instance{
   string * PrintSite(){ return _pSiteString; };
   SequenceObject * ParentSequence(){return _pParentSequence;};
   string * PrintSeqName(){return _pSeqName;};
+
+  bool CheckLeftExtension(int pos);
+  bool CheckRightExtension(int pos);
   
   // adaptors
   void SetID(string *pId){ _pId = pId; return;};
@@ -41,11 +46,7 @@ class Instance{
   Instance * SetSeqName(string *pName){_pSeqName = pName; return this;};
   Instance * ExtendLeft(int pos);
   Instance * ExtendRight(int pos);
-  
-  bool CheckLeftExtension(int pos);
-  bool CheckRightExtension(int pos);
-
-  
+    
 };
 
 

@@ -8,14 +8,16 @@
 class BlockSamplerRun : public MotifSamplerRun 
 {
   private:
-    map<string, double> *_pWeightMap;
+    // map<string, double> *_pWeightMap;
     SequenceObject* _pRootSequence;
+    SequenceComputation * _pRootComputation; // 3.1.5
     
   public:
     BlockSamplerRun(string* pFasta, string* pRootID, strand_modes strand);
     ~BlockSamplerRun();
   
-    void SetSequenceWeight();
+    //void SetSequenceWeight();
+    void FixNbrInstForRoot(); // 3.1.5
     
     void InitializationStep(int iterations);
     void CoreSamplingStep(int iterations);

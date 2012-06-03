@@ -10,7 +10,8 @@ class PWMIO {
   bool _isOpenWriting;
   ifstream _ifs;
   ofstream _ofs;
-  string *_pLine;
+  string _pLine;
+  string * _pError; 
 
  public: 
     // constructor
@@ -21,6 +22,7 @@ class PWMIO {
 
   // inspectors
   bool IsOpen();
+  string * GetError(){return _pError;}
 
   PWM * ReadMatrix();
   int WriteMatrix(PWM *matrix);

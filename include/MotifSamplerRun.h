@@ -42,7 +42,7 @@ class MotifSamplerRun{
 
   // parameters
   int _w;
-  double _prior;
+  //double _prior; 
   int _overlap;
   string *_pId;
   double _scale;
@@ -59,6 +59,10 @@ class MotifSamplerRun{
   void _LoadSequences(string * pFastaFile, strand_modes strand);
   void _ClearInstanceMap();
 
+  // trackoutput
+  GFFWriter * _pgfftrack;
+  GFFWriter * _pgffio;
+
  public:
 
   // constructor
@@ -69,8 +73,9 @@ class MotifSamplerRun{
   
   // methods to set parameters
   void SetMotifLength(int wLength); // setting the motif length will change the masks
-  void SetInstancePrior(int prior){_prior = prior; return;};
-  void SetOneInstancePrior(double prior){_prior = prior; return;};
+  // void SetInstancePrior(int prior){_prior = prior; return;};
+  //void SetOneInstancePrior(double prior){_prior = prior; return;};
+  void LinkNbrInstInfo(int maxM, vector<Distribution*>* priorDistrs, bool sample); // 
   void SetInstanceID(string *pSiteId){_pId = pSiteId; return;};
   void SetOverlap(int overlap){_overlap = overlap; return;};
   void SetBackgroundModel(BackgroundModel *pBg);
@@ -80,16 +85,18 @@ class MotifSamplerRun{
   // instance map creation/manipulation
   void InitFixedSizeInstanceMap(int nbr);
   void SampleFixedSizeInstanceMap(int nbr);
-  void SampleMaxSizeInstanceMap(int nbr);
+  //void SampleMaxSizeInstanceMap(int nbr);
   void SampleInstanceMap();
   void SelectFixedSizeBestInstanceMap(int nbr);
-  void SelectMaxSizeBestInstanceMap(int nbr);
+  //void SelectMaxSizeBestInstanceMap(int nbr);
   void SelectBestInstanceMap();
   void ShiftInstanceMap(int maxShift);
   void ExtendLeftInstanceMap(int pos);
   void ExtendRightInstanceMap(int pos);
   int CheckLeftExtension(double threshold);
   int CheckRightExtension(double threshold);
+  int CheckLeftExtension(double threshold, int window);
+  int CheckRightExtension(double threshold, int window);
   
   // motif scores
   void UpdateMotifScores();
@@ -98,7 +105,7 @@ class MotifSamplerRun{
   
   // background model scores
   void UpdateBackgroundScores();
-  bool UpdateBackgroundScore(string* pID, BackgroundModel *pBgM);
+  bool UpdateBackgroundScore(const string& pID, BackgroundModel *pBgM);
 
   // motif manipulation -> stored in _localMotif
   void BuildMotifFromInstanceMap();
@@ -114,9 +121,9 @@ class MotifSamplerRun{
   // different steps in procedure
   void InitializationStep(int iterations);
   void CoreSamplingStep(int iterations, int shiftTime, int maxShift);
-  void CoreMaxSizeSamplingStep(int maxNbr, int iterations, int shiftTime, int maxShift);
+  //void CoreMaxSizeSamplingStep(int maxNbr, int iterations, int shiftTime, int maxShift);
   void ConvergenceStep(int iterations);
-  void MaxSizeConvergenceStep(int maxNbr, int iterations);
+  //void MaxSizeConvergenceStep(int maxNbr, int iterations);
   
   // masking vectors
   void ResetMasks();
@@ -127,6 +134,8 @@ class MotifSamplerRun{
   void StderrPrintMotifInfo();
   void PrintInstanceMap(GFFWriter *pGFFout, string* pSource);
   void StderrPrintInstanceMap();
+  void LinkFiles(GFFWriter * pgff1, GFFWriter * pgff2){ _pgffio = pgff1; _pgfftrack = pgff2; return;}
+  void PrintTrackPositions(int i);
 
 };
 

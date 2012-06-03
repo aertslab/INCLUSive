@@ -27,12 +27,11 @@ class InstanceMap {
   InstanceMap * RemoveInstance(Instance *pInst);
   InstanceMap * ReplaceInstance(Instance *oldInst, Instance *newInst);
   InstanceMap * RemoveInstanceFromSequence(SequenceObject *pSeq);
-  InstanceMap * erase(list<Instance *>::iterator iter);
-  void ClearMap();
-  
+  InstanceMap * Erase(list<Instance *>::iterator iter);
   InstanceMap * ExtendLeft(int pos);
   InstanceMap * ExtendRight(int pos);
-  
+  void ClearMap();
+    
 };
 
 #endif

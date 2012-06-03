@@ -9,21 +9,18 @@ libinclusive_includedir = $(pkgincludedir)
 libinclusive_include_DATA = \
 	BackgroundIO.h\
 	BackgroundModel.h\
-  BlockSamplerRun.h\
 	Distribution.h\
 	FastaIO.h\
-  GFFWriter.h\
+	GFFWriter.h\
 	Instance.h\
 	InstanceMap.h\
-  MaskVector.h\
+	MaskVector.h\
 	MotifSamplerRun.h\
-	PriorMotifSamplerRun.h\
 	PWM.h\
 	PWMIO.h\
 	RandomNumber.h\
+	SequenceComputation.h\
 	SequenceObject.h\
-  SequenceComputation.h\
-	SpacerPWM.h\
 	inclusive.h\
 	utilities.h
 
