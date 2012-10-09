@@ -11,8 +11,9 @@ using namespace INCLUSIVE;
   
   Description:  creates a new computation object
   
-  Date:         2003/06/26
+  Date:         2012/09/19
   Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+                Revised : Marleen Caeys <mclaeys@qatar.net.qa>
   
 ******************************************************************************/
 SequenceComputation::SequenceComputation(SequenceObject * pSeqObj)
@@ -28,11 +29,13 @@ SequenceComputation::SequenceComputation(SequenceObject * pSeqObj)
   _pBackgroundScore = new ScoreVector(_length, 0);
   _pExpWx = new ScoreVector(_length, 0);
   _pMask = new MaskVector(_length);
+  _pPspScore = new ScoreVector(_length, 1);
 
   _pRevMotifScore = new ScoreVector(_length);
   _pRevBackgroundScore = new ScoreVector(_length, 0);
   _pRevExpWx = new ScoreVector(_length, 0);
   _pRevMask = new MaskVector(_length);
+  _pRevPspScore = new ScoreVector(_length, 1);
 
   // set initial length of copy probability to 10
   _pCopyProbDistr = new ScoreVector(10, 0);
@@ -55,8 +58,9 @@ SequenceComputation::SequenceComputation(SequenceObject * pSeqObj)
   
   Description:  destructor
   
-  Date:         2003/06/26
+  Date:         2012/09/19
   Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+                Revised : Marleen Caeys <mclaeys@qatar.net.qa>
   
 ******************************************************************************/
 SequenceComputation::~SequenceComputation()
@@ -83,6 +87,10 @@ SequenceComputation::~SequenceComputation()
   if (_pMask != NULL)
     delete _pMask;
   _pMask = 0;
+	
+  if (_pPspScore != NULL)
+    delete _pPspScore;
+  _pPspScore = NULL;
 
   // scores of the minus strand
   if (_pRevMotifScore != NULL)
@@ -104,6 +112,10 @@ SequenceComputation::~SequenceComputation()
   if (_pRevMask != NULL)
     delete _pRevMask;
   _pRevMask = 0;
+
+  if (_pRevPspScore != NULL)
+    delete _pRevPspScore;
+  _pRevPspScore = NULL;
 
   /*/ other 
   if (_pPriorDistr != NULL)
@@ -288,18 +300,20 @@ SequenceComputation::LinkNbrInstPrior(int max, vector<Distribution*>* distrs)
   Description:  set the score of all instances based on the resp. motif scores
                 and the background scores
   
-  Date:         2003/06/26
+  Date:         2012/09/19
   Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+	            Revised: Marleen Claeys <mclaeys@qatar.net.qa>
   
 ******************************************************************************/
 void
-SequenceComputation::UpdateInstanceExpWx(strand_modes STRAND)
+SequenceComputation::UpdateInstanceExpWx(strand_modes STRAND, bool psp)
 {
   // define some iterators
   vector < double >::iterator iter1;
   vector < double >::iterator iter2;
   vector < double >::iterator iter3;
   vector < int >::iterator iter4;
+  vector < double >::iterator iter5; // to iterate through PSP
 
   // plus strand
   if (STRAND == both || STRAND == plus_strand)
@@ -308,16 +322,21 @@ SequenceComputation::UpdateInstanceExpWx(strand_modes STRAND)
     iter2 = _pBackgroundScore->begin();
     iter3 = _pExpWx->begin();
     iter4 = _pMask->begin();
+    iter5 = _pPspScore->begin();
 
     while (iter1 != _pMotifScore->end())
     {
-      (*iter3) = exp((*iter1) - (*iter2)) * (*iter4);
+      if (psp)
+      { (*iter3) = exp((*iter1) - (*iter2)) * (*iter4)* (*iter5);}
+      else
+      { (*iter3) = exp((*iter1) - (*iter2)) * (*iter4);}
       // cerr << (*iter3) << " ";
       // augment iterators
       iter1++;
       iter2++;
       iter3++;
       iter4++;
+      iter5++;
     }
     // cerr << endl;
   }
@@ -328,15 +347,20 @@ SequenceComputation::UpdateInstanceExpWx(strand_modes STRAND)
     iter2 = _pRevBackgroundScore->begin();
     iter3 = _pRevExpWx->begin();
     iter4 = _pRevMask->begin();
+    iter5 = _pRevPspScore->begin();
 
     while (iter1 != _pRevMotifScore->end())
     {
-      (*iter3) = exp((*iter1) - (*iter2)) * (*iter4);
+      if (psp)
+      { (*iter3) = exp((*iter1) - (*iter2)) * (*iter4)* (*iter5);}
+      else
+      { (*iter3) = exp((*iter1) - (*iter2)) * (*iter4);}
       // augment iterators
       iter1++;
       iter2++;
       iter3++;
       iter4++;
+      iter5++;
     }
 
   }
@@ -1388,7 +1412,35 @@ const
 		return 0;
 	}
 }
-
+/******************************************************************************
+  Method:       GetPspScoreAt
+  Description:  get the PSP score of the instance at position ndx
+  
+  Date:         2012/09/19
+  Author:       Marleen Claeys <mclaeys@qatar.net.qa>
+  
+******************************************************************************/
+double
+SequenceComputation::GetPspScoreAt(int ndx, strand_modes STRAND)
+const
+{
+  if (ndx < 0 || ndx >= _length)
+  {
+    return 0;
+  }
+  else if (STRAND == plus_strand)
+  {
+    return (*_pPspScore)[ndx];
+  }
+  else if (STRAND == minus_strand)
+  {
+    return (*_pRevPspScore)[ndx];
+  }
+	else
+	{
+		return 0;
+	}
+}
 /******************************************************************************
   Method:       GetBackgroundScoreAt
   Class:        SequenceComputation
@@ -1563,6 +1615,11 @@ SequenceComputation::SetMotifLength(int wLength)
     // update mask (last wLength - 1 positions set to zero);
     _pMask->UpdateMask(_length - _wlength + 1, _wlength, 0);
     _pRevMask->UpdateMask(_length - _wlength + 1, _wlength, 0);
+    for (int i = _length - _wlength +1; i < _length; i++)
+    {
+      (*_pPspScore)[i] = 0;
+      (*_pRevPspScore)[i] = 0;
+    }
   }
   return;
 }
@@ -1612,4 +1669,39 @@ SequenceComputation::LogLikelihoodScore(vector<int> * pAlign, strand_modes STRAN
   }
 
   return log(score);
+}
+
+/******************************************************************************
+  Description:  set the PSP score of all segments
+  Date:         2012/09/19
+  Author:       Marleen Claeys <mclaeys@qatar.net.qa>
+  
+******************************************************************************/
+void
+SequenceComputation::UpdatePspScores(ScoreVector * psp, strand_modes STRAND)
+{
+  // define some iterators
+  vector < double >::iterator iter1;
+  int L = psp->size();
+  if (L != _length) // should normally be ok (checked before)
+  {
+    cerr << "--Error--SeqComp::UpdatePspScores(): inconsistent lengths (" 
+		  << L << "," << _length << ")." << endl; 
+    //return; // no return, it will result in an error to be fixed
+  }
+  // update each prob (but not the last L-w values, these are 0.0
+  for (int i = 0; i < (_length-_wlength); i++)
+  {
+    // plus strand
+    if (STRAND == both || STRAND == plus_strand)
+    {
+      (*_pPspScore)[i] = (*psp)[i];
+    }
+    // minus strand // apply same probs on the reverse strand 
+    if (STRAND == both || STRAND == minus_strand)
+    {
+      (*_pRevPspScore)[_length-_wlength -i] = (*psp)[i];
+    }
+  }
+  return;
 }

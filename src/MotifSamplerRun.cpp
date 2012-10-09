@@ -4,6 +4,7 @@
 // release version 3.1.2 : 1 bug fixed in LogLikelihoodScore
 // release version 3.1.4 : 1 bug fixed in UpdateMasksFromInstanceMap
 // release version 3.1.5 : multiple priors and sampling extensions
+// release version 3.2.0 : implement PSP
 
 /******************************************************************************
   Method: 
@@ -16,16 +17,17 @@
   Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
   
 ******************************************************************************/
-MotifSamplerRun::MotifSamplerRun(string * pFastaFile, strand_modes strand)
+MotifSamplerRun::MotifSamplerRun(string * pFastaFile, strand_modes strand, GFFWriter * pgff)
 {
   // cerr << "DEBUG: MotifSamplerRun::MotifSamplerRun" << endl;
-
+  _pgffio = pgff;
   // initialize sequence set
   _strand = strand;
   _pSequenceList = new SequenceSet;
   _pComputationMap = new map < SequenceObject *, SequenceComputation * >;
   _nbrSequences = 0;
   _w = 0; // initialize the motif length to 0
+  _pspSetting = "n"; // to be set later
   ostringstream cerrstr;
 
   // internal sequence pointer
@@ -1326,6 +1328,113 @@ bool
   return found;
 }
 
+/******************************************************************************
+  Description:  UpdatePspScores(string * pPspFile)
+  Date:         2012/09/19
+  Author:       Marleen Claeys <mclaeys@qatar.net.qa>
+  
+******************************************************************************/
+bool
+  MotifSamplerRun::UpdatePspScores(string * pPspFile, string psp)
+{
+  // cerr << "DEBUG: MotifSamplerRun::UpdatePspScores" << endl;
+  _pspSetting = psp;
+	
+  bool implemented = true;
+  string error = "";
+  string *id = NULL;
+  SequenceComputation *pSeqComp = NULL;
+  ScoreVector *pPSP = NULL;
+  ostringstream cerrstr;
+  int nbrPSPseq = 0;
+  string trackSeq = "";
+
+  // open fasta file
+  cerr << "Open psp file for reading." << endl;
+  FastaIO *fileIO = new FastaIO(pPspFile);
+  if (fileIO == NULL)
+  {
+    cerr << "--Error-- MotifSamplerRun::UpdatePspScores: "
+      << "Unable to open psp file (-q)" << endl;
+    cerrstr << "--Error-- MotifSamplerRun::UpdatePspScores: "
+      << "Unable to open psp file (-q)" << endl;
+    _pgffio->AddComment(cerrstr.str());
+    cerrstr.flush(); // flush     
+    return false;
+  }
+  else
+  { 
+    while (fileIO->HasNext()) // pointer set at start of > line
+    {
+      // read the sequence id (must be same as previously loaded in FASTA)
+      id = fileIO->ReadSeqID();
+      if (id == NULL)
+      { // incorrect format
+        error = "--Error-- MotifSamplerRun::UpdatePspScores: incorrect format for sequence identification (> lines).";
+        implemented = false; break;
+      }
+      pSeqComp = FindSequence(id);
+      if (pSeqComp == NULL)
+      { // sequence id not found, skip this information
+        error = "--Warning--MotifSamplerRun::UpdatePspScores: sequence not found in FASTA file (-f). Skip sequence >";
+        error.append(*id);
+        cerr << error << endl;
+        cerrstr << error << endl;
+        _pgffio->AddComment(cerrstr.str());
+        cerrstr.flush(); // flush     
+        // set pointer ready on next >line
+        fileIO->LoadPspData(0, 0, 1);
+        delete id; id = NULL;
+        continue;
+      }
+      pPSP = fileIO->LoadPspData((pSeqComp->ParentSequence())->Length(), pSeqComp->GetMotifLength(), 0); 
+      if (pPSP == NULL)
+      { // incorrect format
+        error = "--Error-- MotifSamplerRun::UpdatePspScores: incorrect format in PSP probabilities of sequence >";
+        error.append(*id);
+        string * psperror = fileIO->GetPSPerror();
+        if (psperror != NULL)
+        {
+          error.append("\n");
+          error.append(*psperror);
+        }
+        implemented = false; break;
+      }
+      pSeqComp->UpdatePspScores(pPSP, _strand);
+      nbrPSPseq++;
+      trackSeq.append(">");trackSeq.append(*id);trackSeq.append(" ");
+      delete id; id = NULL;
+      pSeqComp = NULL;
+      delete pPSP; pPSP = NULL;
+    }
+    if (!implemented)
+    {
+      cerr << error << endl;
+      cerrstr << error << endl;
+      _pgffio->AddComment(cerrstr.str());
+      cerrstr.flush(); // flush     
+    }
+  }
+  // close psp file
+  delete fileIO;
+  // cleanup
+  if (id != NULL) delete id; id = NULL;
+	
+  // check if all fasta sequences have been covered
+  if (implemented && nbrPSPseq != _nbrSequences)
+  {
+	string warning = "--Warning--MotifSamplerRun::UpdatePspScores: The number of sequences in PSP file (-q) does not equal the number of sequences in FASTA file (-f). PSP was stored for [";
+	warning.append(trackSeq);
+	warning.append("].");
+    cerr << warning << endl;
+    cerrstr << warning << endl;
+    _pgffio->AddComment(cerrstr.str());
+    cerrstr.flush(); // flush     
+  }
+
+  // cerr << "DEBUG: MotifSamplerRun::UpdatePspScores" << endl;
+  return implemented;
+}
 
 /******************************************************************************
   Method: 
@@ -1341,13 +1450,14 @@ bool
 void
   MotifSamplerRun::UpdateMotifScores()
 {
+	// mark : this function is only used in ShiftInstanceMap.
 
   // create motif model from current instance map
   // cerr << "DEBUG: MotifSamplerRun::UpdateMotifScores" << endl;
 
   // motif should be stored in _localMotif
   if ( _localMotif == NULL )
-    BuildMotifFromInstanceMap();
+    BuildMotifFromInstanceMap(0); // not needed here (only for ConvergenceStep)
   
   // iterate through sequences 
   MapIterator seqIter = _pComputationMap->begin();
@@ -1358,7 +1468,7 @@ void
     {
       // score sequence with motif model
       (*seqIter).second->UpdateInstanceMotifScore(_localMotif, _strand);
-      (*seqIter).second->UpdateInstanceExpWx(_strand);
+      (*seqIter).second->UpdateInstanceExpWx(_strand, 0); // no PSP needed here
     }
     seqIter++;
   }
@@ -1393,8 +1503,10 @@ void
 
     // score sequence
     (*ci).second->UpdateInstanceMotifScore(_localMotif, _strand);
-    (*ci).second->UpdateInstanceExpWx(_strand);
-
+    if (_pspSetting == "s" || _pspSetting == "b")
+      (*ci).second->UpdateInstanceExpWx(_strand, 1);
+    else
+      (*ci).second->UpdateInstanceExpWx(_strand, 0);
     // next sequence
     ci++;
   }
@@ -1426,7 +1538,7 @@ void
   }
 
   // build motif model
-  BuildMotifFromInstanceMap();
+  BuildMotifFromInstanceMap(0); // NO psp applicable
   if (_localMotif == NULL)
 
   {
@@ -1465,7 +1577,7 @@ void
 {
   // cerr << "DEBUG: MotifSamplerRun::ShiftInstanceMap" << endl;
   // first get score of latest motif from instance map
-  BuildMotifFromInstanceMap();
+  BuildMotifFromInstanceMap(0); // NO psp applicable
   // initially there is no shift
   double
     ic = _localMotif->InformationContent(_pBgModel->GetSNF());
@@ -1586,7 +1698,7 @@ void
     pTmp = NULL;
 
     // create motif model from current instance map and update motif scores
-    BuildMotifFromInstanceMap();
+    BuildMotifFromInstanceMap(0); // no PSP needed here 
     UpdateMotifScores();
 
   }
@@ -1603,12 +1715,13 @@ void
   
   Description:
   
-  Date:         2003/06/26
+  Date:         2012/09/19
   Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+		  Revised: Marleen Claeys <mclaeys@qatar.net.qa>
   
 ******************************************************************************/
 void
-  MotifSamplerRun::BuildMotifFromInstanceMap()
+  MotifSamplerRun::BuildMotifFromInstanceMap(bool checkpsp)
 {
   // cerr << "DEBUG: MotifSamplerRun::BuildMotifFromInstanceMap" << endl;
   ostringstream cerrstr;
@@ -1636,13 +1749,24 @@ void
     for (int j = 0; j < 4; j++)
       _pLocalCounts[i][j] = 0;
 
-  // loop over all instances in the InstanceMap and add them to the the count matrix
+  // loop over all instances in the InstanceMap and add them to the count matrix
   list < Instance * >::iterator iter = _pInstanceMap->begin();
+	
+  // if PSP in updating step, then apply PSP-prob of the respective instance
+  // (mark : one PSP-prob per instance, to be applied on all pos-counts of this instance
+  bool ApplyPSP = false;
+  if (checkpsp && (_pspSetting == "b" || _pspSetting == "u")) ApplyPSP = true;
+  double prob = 1;
+	
   int
     nt;
   while (iter != _pInstanceMap->end())
   {
-
+    // get the PSP-prob of this instance
+    if (ApplyPSP)
+    {
+prob = (FindSequence(((*iter)->ParentSequence())->GetID()))->GetPspScoreAt((*iter)->Start(), (*iter)->Strand());
+    }
     // get site
     if ((*iter)->Site() != NULL)
     {
@@ -1650,7 +1774,7 @@ void
       {
         nt = (*((*iter)->Site()))[j];
         if (nt >= 0 && nt < 4)
-          _pLocalCounts[j][nt] += 1;
+          _pLocalCounts[j][nt] += prob;
       }
     }
     iter++;                     // next
@@ -1682,8 +1806,9 @@ void
   
   Description:
   
-  Date:         2003/06/26
+  Date:         2012/09/19
   Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
+                Revised: Marleen Claeys <mclaeys@qatar.net.qa>
   
 ******************************************************************************/
 void
@@ -1715,8 +1840,15 @@ void
     for (int j = 0; j < 4; j++)
       _pLocalCounts[i][j] = 0;
 
-  // loop over all instances in the InstanceMap and add them to the the count matrix
+  // loop over all instances in the InstanceMap and add them to the count matrix
   // cerr << "DEBUG: Loop over all instances." << endl;
+	
+  // if PSP in updating step, then apply PSP-prob of the respective instance
+  // (mark : one PSP-prob per instance, to be applied on all pos-counts of this instance
+  bool ApplyPSP = false;
+  if (_pspSetting == "b" || _pspSetting == "u") ApplyPSP = true;
+  double prob = 1;
+	
   list < Instance * >::iterator iter = _pInstanceMap->begin();
   int
     nt;
@@ -1735,6 +1867,11 @@ void
     // get ID of ParentSequence
     string *
       pInstanceID = (*iter)->PrintSeqName();
+    // get the PSP-prob of this instance
+    if (ApplyPSP)
+    {
+prob = (FindSequence(((*iter)->ParentSequence())->GetID()))->GetPspScoreAt((*iter)->Start(), (*iter)->Strand());
+    }
     // cerr << "DEBUG: next instance = " << *pInstanceID << endl;
     // if (pInstanceID->compare(0, pInstanceID->size(), *pSeqId))
     if (pInstanceID->compare(*pSeqId))
@@ -1747,7 +1884,7 @@ void
         {
           nt = (*((*iter)->Site()))[j];
           if (nt >= 0 && nt < 4)
-            _pLocalCounts[j][nt] += 1;
+            _pLocalCounts[j][nt] += prob; // prob instead of '1'
         }
       }
     }
@@ -1791,7 +1928,7 @@ MotifSamplerRun::GetMotifModel()
   // cerr << "DEBUG: MotifSamplerRun::GetMotifModel" << endl;
 
   // first get score of latest motif from instance map
-  BuildMotifFromInstanceMap();
+  BuildMotifFromInstanceMap(0); // no PSP applicable
   // cerr << "DEBUG: MotifSamplerRun::GetMotifModel" << endl;
   return _localMotif;
 }
@@ -2065,10 +2202,10 @@ MotifSamplerRun::SetMotifLength(int wLength)
     
     _w = wLength;
     
-    _pLocalCounts = new int*[_w];  
+    _pLocalCounts = new double*[_w];  
     for (int i=0; i<_w; i++)
     {
-      _pLocalCounts[i] = new int[4];
+      _pLocalCounts[i] = new double[4];
       for (int j=0; j<4; j++)
         _pLocalCounts[i][j] = 0;
     }
@@ -2225,7 +2362,10 @@ void
 
       // update motif scores
       pComp->UpdateInstanceMotifScore(_localMotif, _strand);
-      pComp->UpdateInstanceExpWx(_strand);
+      if (_pspSetting == "s" || _pspSetting == "b")
+        pComp->UpdateInstanceExpWx(_strand, 1);
+      else
+        pComp->UpdateInstanceExpWx(_strand, 0);
 
       // compute distribution to estimate number of instances
       //pComp->UpdateCopyProbability(_prior, _strand);
@@ -2292,7 +2432,7 @@ void
     mi = _pComputationMap->begin();
 
     // build motif model from all instances
-    BuildMotifFromInstanceMap();
+    BuildMotifFromInstanceMap(1); // gibbs iteration step
     while (mi != _pComputationMap->end())
     {
       pSeq = (*mi).first;
@@ -2300,7 +2440,10 @@ void
 
       // update motif scores
       pComp->UpdateInstanceMotifScore(_localMotif, _strand);
-      pComp->UpdateInstanceExpWx(_strand);
+      if (_pspSetting == "s" || _pspSetting == "b")
+        pComp->UpdateInstanceExpWx(_strand, 1);
+      else
+        pComp->UpdateInstanceExpWx(_strand, 0);
 
       // compute distribution to estimate number of instances
       //pComp->UpdateCopyProbability(_prior, _strand);
@@ -2332,7 +2475,7 @@ void
     pComp = NULL;
   }
 
-  BuildMotifFromInstanceMap();
+  BuildMotifFromInstanceMap(0); // no PSP applicable
   //StderrPrintInstanceMap();
   
   // cerr << "DEBUG: MotifSamplerRun::ConvergenceStep" << endl;
@@ -2397,7 +2540,10 @@ void
 
       // update motif scores
       pComp->UpdateInstanceMotifScore(_localMotif, _strand);
-      pComp->UpdateInstanceExpWx(_strand);
+      if (_pspSetting == "s" || _pspSetting == "b")
+        pComp->UpdateInstanceExpWx(_strand, 1);
+      else
+        pComp->UpdateInstanceExpWx(_strand, 0);
 
       // compute distribution to estimate number of instances
       //pComp->UpdateFixedSizeCopyProbability(maxNbr, _prior, _strand);
@@ -2462,7 +2608,7 @@ void
     mi = _pComputationMap->begin();
 
     // build motif model from all instances 
-    BuildMotifFromInstanceMap();
+    BuildMotifFromInstanceMap(1);
     while (mi != _pComputationMap->end())
     {
       pSeq = (*mi).first;
@@ -2470,7 +2616,10 @@ void
 
       // update motif scores
       pComp->UpdateInstanceMotifScore(_localMotif, _strand);
-      pComp->UpdateInstanceExpWx(_strand);
+      if (_pspSetting == "s" || _pspSetting == "b")
+        pComp->UpdateInstanceExpWx(_strand, 1);
+      else
+        pComp->UpdateInstanceExpWx(_strand, 0);
 
       // compute distribution to estimate number of instances
       //pComp->UpdateFixedSizeCopyProbability(maxNbr, _prior, _strand);
@@ -2500,7 +2649,7 @@ void
     pComp = NULL;
   }
 
-  BuildMotifFromInstanceMap();
+  BuildMotifFromInstanceMap(0);
   //StderrPrintInstanceMap();
   
   // cerr << "DEBUG: MotifSamplerRun::MaxSizeConvergenceStep" << endl;
@@ -3082,4 +3231,32 @@ MotifSamplerRun::CheckRightExtension(double threshold, int window)
   delete[] vACGT;
   
   return pos;
+}
+/******************************************************************************
+  Description:  check if 'id' is present in SeqObj of _pComputationMap 
+                if so return SequenceComputation
+  Date:         2012/09/19
+  Author:       Marleen Claeys <mclaeys@qatar.net.qa>
+  
+******************************************************************************/
+SequenceComputation *
+  MotifSamplerRun::FindSequence(string * id)
+{
+  // cerr << "DEBUG: MotifSamplerRun::FindSequence()" << endl;
+  SequenceComputation * comp = NULL;
+
+  // iterate through sequences 
+  MapIterator seqIter = _pComputationMap->begin();
+  while (seqIter != _pComputationMap->end())
+  {
+    if ((*id) == (*(*seqIter).first->GetID()))
+    {
+      // found, and assign comp-object
+      comp = (*seqIter).second;
+      break;
+    }
+    seqIter++;
+  }
+  // cerr << "DEBUG: MotifSamplerRun::FindSequence() -- end" << endl;
+  return comp;
 }

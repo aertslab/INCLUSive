@@ -8,8 +8,7 @@ INCLUDES =\
 	 -I../include
 
 AM_CXXFLAGS =\
-	 -Wall -g -pg \
-	 -static
+	 -Wall -g -pg -static
 
 bin_PROGRAMS = \
 	CreateBackgroundModel\
@@ -20,22 +19,22 @@ bin_PROGRAMS = \
 
 # here are the sources of these programs
 CreateBackgroundModel_SOURCES = mainCreateBackgroundModel.cpp
-CreateBackgroundModel_LDFLAGS = -all-static
+CreateBackgroundModel_LDFLAGS = -all -static
 CreateBackgroundModel_LDADD = ../src/libinclusive.la
 
 MotifComparison_SOURCES = mainMotifComparison.cpp
-MotifComparison_LDFLAGS = -all-static
+MotifComparison_LDFLAGS = -all -static
 MotifComparison_LDADD = ../src/libinclusive.la
 
 MotifLocator_SOURCES = mainMotifLocator.cpp
-MotifLocator_LDFLAGS = -all-static
+MotifLocator_LDFLAGS = -all -static
 MotifLocator_LDADD = ../src/libinclusive.la
 
 MotifRanking_SOURCES = mainMotifRanking.cpp
-MotifRanking_LDFLAGS = -all-static
+MotifRanking_LDFLAGS = -all -static
 MotifRanking_LDADD = ../src/libinclusive.la
 
 MotifSampler_SOURCES = mainMotifSampler.cpp
-MotifSampler_LDFLAGS = -all-static
-MotifSampler_LDADD = ../src/libinclusive.la
+MotifSampler_LDFLAGS = -all -static
+MotifSampler_LDADD = ../src/libinclusive.la 
 

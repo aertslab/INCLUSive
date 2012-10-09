@@ -2,6 +2,8 @@
 // inclusive.h FastaIO.h/cpp PWMIO.cpp PWM.h/cpp
 // report extra output to tracking file (-t)
 // 20 march 2012 : adjust cerr reporting => cerrstr
+// 28 sept 2012 : error (and exit) for incorrect PWM format reading
+
 
 
 #include "inclusive.h"
@@ -206,6 +208,7 @@ main(int argc, char *argv[])
     pgffText->AddComment(pwmIO->GetError()); 
     delete pgffText; pgffText = NULL;  
     delete pwmIO; pwmIO = NULL;
+    delete pwmIO1; pwmIO1 = NULL;
     cleanup(); exit(-1);  
   }
   PWM * myMatrix = NULL;
@@ -213,10 +216,27 @@ main(int argc, char *argv[])
   list < PWM * >::iterator matIter;
   int count = 0;
   int similars = 0; int nonsimilars = 0;
-  while (pwmIO->IsOpen() && (myMatrix = pwmIO->ReadMatrix()))
-  { if (myMatrix == NULL) break;
-    dbMatrix.push_back(myMatrix);
-    count++;
+
+  while (pwmIO->IsOpen())
+  { myMatrix = pwmIO->ReadMatrix(); 
+    if (myMatrix == NULL && (pwmIO->GetError()) != NULL) 
+    { 
+      cerr << *(pwmIO->GetError()) << endl;
+      pgffText->AddComment(pwmIO->GetError()); 
+      cerr << "--Error: MotifComparison : incorrect matrix format found in matrix database file." << endl;
+      cerrstr << "--Error: MotifComparison : incorrect matrix format found in matrix database file." << endl;
+      pgffText->AddComment(cerrstr.str());
+      cerrstr.flush(); // flush
+      delete pgffText; pgffText = NULL;  
+      delete pwmIO; pwmIO = NULL;
+      delete pwmIO1; pwmIO1 = NULL;
+      cleanup(); exit(-1);
+    }
+    if (myMatrix != NULL) // if NULL: processing not-matrix lines
+    {
+      dbMatrix.push_back(myMatrix); 
+      count++;
+    }
   }
   delete pwmIO; pwmIO = NULL;  // close matrix reader
   if (count == 0)
@@ -224,7 +244,9 @@ main(int argc, char *argv[])
     cerrstr << "--Error: MotifComparison : no usable matrix found in database input file." << endl;
     pgffText->AddComment(cerrstr.str());
     cerrstr.flush(); // flush  
-    delete pgffText; pgffText = NULL;
+    delete pgffText; pgffText = NULL;  
+    delete pwmIO; pwmIO = NULL;
+    delete pwmIO1; pwmIO1 = NULL;
     delete dbFile; dbFile = NULL;
     // exit
     cleanup(); exit(-1); 
@@ -318,9 +340,26 @@ main(int argc, char *argv[])
   // iterate over all matrices
   int counter = 0;
   int maximalS = 0;
-  while (pwmIO1->IsOpen() && (myMatrix = pwmIO1->ReadMatrix()))
+  while (pwmIO1->IsOpen())
   {
-    if (myMatrix == NULL) break;
+    myMatrix = pwmIO1->ReadMatrix();
+    if (myMatrix == NULL && (pwmIO1->GetError()) != NULL) 
+    { 
+      cerr << *(pwmIO1->GetError()) << endl;
+      pgffText->AddComment(pwmIO1->GetError()); 
+      cerr << "--Error: MotifComparison : incorrect matrix format found in matrix input file." << endl;
+      cerrstr << "--Error: MotifComparison : incorrect matrix format found in matrix input file." << endl;
+      pgffText->AddComment(cerrstr.str());
+      cerrstr.flush(); // flush  
+      // do not exit here, but break
+      break;
+      //delete pgffText; pgffText = NULL;  
+      //delete pwmIO; pwmIO = NULL;
+      //delete pwmIO1; pwmIO1 = NULL;
+      //cleanup(); exit(-1);
+    }
+    if (myMatrix == NULL) {break;} // processing not-matrix lines, end of file
+    // else this is a good matrix, continue
     counter++;
     maximalS = 0;
     matIter = dbMatrix.begin();
@@ -425,7 +464,8 @@ main(int argc, char *argv[])
   delete pwmIO1; pwmIO1 = NULL;
 	
 	
-	report << endl << "#SUMMARY of " << count*counter << " comparisons:" << endl;
+	report << endl << "#SUMMARY of " << count << "(DB-matrices)*" 
+		<< counter << "(INPUT-matrices) = " << count*counter << " comparisons:" << endl;
 	report << "#SIMILARS: " << similars << "." << endl;
 	report << "#NON-SIMILARS: " << nonsimilars << "." << endl;
 	
@@ -445,7 +485,9 @@ main(int argc, char *argv[])
   cleanup();
   delete[] pDirichlet; pDirichlet = NULL; //
   delete[] pBgSNF; pBgSNF = NULL; // 
-  delete pgffText; pgffText = NULL;
+  if (pgffText != NULL) delete pgffText; pgffText = NULL;
+  if (pwmIO != NULL) delete pwmIO; pwmIO = NULL;
+  if (pwmIO1 != NULL) delete pwmIO1; pwmIO1 = NULL;
 
   // program is succesful
   cerr << "MotifComparison: ending procedure successfully." << endl;
@@ -470,6 +512,7 @@ instructions()
   cout << "  -d <matrixFile>     File containing database of models with which "
     << "all query motifs will be compared." 
     << endl;
+  cout << "  -o <outFile>        Output file to write results to." << endl;
   cout << endl;
   cout << " Optional Arguments" << endl;
   cout << "  -t <value>          Treshold where two motifs are seen as being "
@@ -486,7 +529,6 @@ instructions()
        << "Default <order0 : 0.25_0.25_0.25_0.25>."<< endl;	
   cout << "  -n <value>          Number of shuffles for p-value computation. "
        << "Default<20>" << endl;
-  cout << "  -o <outFile>        Output file to write results to." << endl;
   cout << endl;
   cout << "  -v                  Version of MotifComparison" << endl;
   cout << "Version " << VERSION << endl;
@@ -509,6 +551,7 @@ version()
   cout << "  - (3.1.5) 08/09/09 : some updates on BLiC." << endl;
   cout << "  - (3.1.5) 07/04/11 : minor revisions in output formatting" << endl;
   cout << "  - (3.1.5) 14/03/12 : output error messages to user file." << endl;
+  cout << "  - (3.2.0) 28/09/12 : exit on PWM-reading error." << endl;
   cout << "  - end." << endl;
   cout << endl; 
 

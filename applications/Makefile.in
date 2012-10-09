@@ -14,7 +14,7 @@
 
 @SET_MAKE@
 
-SOURCES = $(BackgroundScore_SOURCES) $(Block2MotifAligner_SOURCES) $(BlockAligner2_SOURCES) $(BlockRanking_SOURCES) $(BlockSampler_SOURCES) $(CiRES_SOURCES) $(CreateBackgroundModel_SOURCES) $(MotifClustering_SOURCES) $(MotifComparison_SOURCES) $(MotifLocator_SOURCES) $(MotifModelShuffler_SOURCES) $(MotifRanking_SOURCES) $(MotifSampler_SOURCES) $(MotifScanner_SOURCES) $(PhyloSampler_SOURCES) $(PriorMotifSampler_SOURCES)
+SOURCES = $(CreateBackgroundModel_SOURCES) $(MotifComparison_SOURCES) $(MotifLocator_SOURCES) $(MotifRanking_SOURCES) $(MotifSampler_SOURCES) 
 
 srcdir = @srcdir@
 top_srcdir = @top_srcdir@
@@ -38,14 +38,10 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
-bin_PROGRAMS = CreateBackgroundModel$(EXEEXT) BackgroundScore$(EXEEXT) \
+bin_PROGRAMS = CreateBackgroundModel$(EXEEXT) \
 	MotifComparison$(EXEEXT) MotifLocator$(EXEEXT) \
-	MotifRanking$(EXEEXT) MotifScanner$(EXEEXT) \
-	MotifSampler$(EXEEXT) PriorMotifSampler$(EXEEXT) \
-	PhyloSampler$(EXEEXT) BlockSampler$(EXEEXT) \
-	BlockRanking$(EXEEXT) Block2MotifAligner$(EXEEXT) \
-	MotifModelShuffler$(EXEEXT) CiRES$(EXEEXT) \
-	BlockAligner2$(EXEEXT) MotifClustering$(EXEEXT)
+	MotifRanking$(EXEEXT)  \
+	MotifSampler$(EXEEXT) 
 subdir = applications
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -59,55 +55,22 @@ CONFIG_CLEAN_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 PROGRAMS = $(bin_PROGRAMS)
-am_BackgroundScore_OBJECTS = mainBackgroundScore.$(OBJEXT)
-BackgroundScore_OBJECTS = $(am_BackgroundScore_OBJECTS)
-BackgroundScore_DEPENDENCIES = ../src/libinclusive.la
-am_Block2MotifAligner_OBJECTS = mainBlock2MotifAligner.$(OBJEXT)
-Block2MotifAligner_OBJECTS = $(am_Block2MotifAligner_OBJECTS)
-Block2MotifAligner_DEPENDENCIES = ../src/libinclusive.la
-am_BlockAligner2_OBJECTS = mainBlockAligner2.$(OBJEXT)
-BlockAligner2_OBJECTS = $(am_BlockAligner2_OBJECTS)
-BlockAligner2_DEPENDENCIES = ../src/libinclusive.la
-am_BlockRanking_OBJECTS = mainBlockRanking.$(OBJEXT)
-BlockRanking_OBJECTS = $(am_BlockRanking_OBJECTS)
-BlockRanking_DEPENDENCIES = ../src/libinclusive.la
-am_BlockSampler_OBJECTS = mainBlockSampler.$(OBJEXT)
-BlockSampler_OBJECTS = $(am_BlockSampler_OBJECTS)
-BlockSampler_DEPENDENCIES = ../src/libinclusive.la
-am_CiRES_OBJECTS = mainCiRES.$(OBJEXT)
-CiRES_OBJECTS = $(am_CiRES_OBJECTS)
-CiRES_DEPENDENCIES = ../src/libinclusive.la
 am_CreateBackgroundModel_OBJECTS =  \
 	mainCreateBackgroundModel.$(OBJEXT)
 CreateBackgroundModel_OBJECTS = $(am_CreateBackgroundModel_OBJECTS)
 CreateBackgroundModel_DEPENDENCIES = ../src/libinclusive.la
-am_MotifClustering_OBJECTS = mainMotifClustering.$(OBJEXT)
-MotifClustering_OBJECTS = $(am_MotifClustering_OBJECTS)
-MotifClustering_DEPENDENCIES = ../src/libinclusive.la
 am_MotifComparison_OBJECTS = mainMotifComparison.$(OBJEXT)
 MotifComparison_OBJECTS = $(am_MotifComparison_OBJECTS)
 MotifComparison_DEPENDENCIES = ../src/libinclusive.la
 am_MotifLocator_OBJECTS = mainMotifLocator.$(OBJEXT)
 MotifLocator_OBJECTS = $(am_MotifLocator_OBJECTS)
 MotifLocator_DEPENDENCIES = ../src/libinclusive.la
-am_MotifModelShuffler_OBJECTS = mainMotifModelShuffler.$(OBJEXT)
-MotifModelShuffler_OBJECTS = $(am_MotifModelShuffler_OBJECTS)
-MotifModelShuffler_DEPENDENCIES = ../src/libinclusive.la
 am_MotifRanking_OBJECTS = mainMotifRanking.$(OBJEXT)
 MotifRanking_OBJECTS = $(am_MotifRanking_OBJECTS)
 MotifRanking_DEPENDENCIES = ../src/libinclusive.la
 am_MotifSampler_OBJECTS = mainMotifSampler.$(OBJEXT)
 MotifSampler_OBJECTS = $(am_MotifSampler_OBJECTS)
 MotifSampler_DEPENDENCIES = ../src/libinclusive.la
-am_MotifScanner_OBJECTS = mainMotifScanner.$(OBJEXT)
-MotifScanner_OBJECTS = $(am_MotifScanner_OBJECTS)
-MotifScanner_DEPENDENCIES = ../src/libinclusive.la
-am_PhyloSampler_OBJECTS = mainPhyloSampler.$(OBJEXT)
-PhyloSampler_OBJECTS = $(am_PhyloSampler_OBJECTS)
-PhyloSampler_DEPENDENCIES = ../src/libinclusive.la
-am_PriorMotifSampler_OBJECTS = mainPriorMotifSampler.$(OBJEXT)
-PriorMotifSampler_OBJECTS = $(am_PriorMotifSampler_OBJECTS)
-PriorMotifSampler_DEPENDENCIES = ../src/libinclusive.la
 DEFAULT_INCLUDES = -I. -I$(srcdir) -I$(top_builddir)
 depcomp = $(SHELL) $(top_srcdir)/depcomp
 am__depfiles_maybe = depfiles
@@ -119,23 +82,14 @@ LTCXXCOMPILE = $(LIBTOOL) --tag=CXX --mode=compile $(CXX) $(DEFS) \
 CXXLD = $(CXX)
 CXXLINK = $(LIBTOOL) --tag=CXX --mode=link $(CXXLD) $(AM_CXXFLAGS) \
 	$(CXXFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(BackgroundScore_SOURCES) $(Block2MotifAligner_SOURCES) \
-	$(BlockAligner2_SOURCES) $(BlockRanking_SOURCES) \
-	$(BlockSampler_SOURCES) $(CiRES_SOURCES) \
-	$(CreateBackgroundModel_SOURCES) $(MotifClustering_SOURCES) \
+SOURCES = $ (CreateBackgroundModel_SOURCES) \
 	$(MotifComparison_SOURCES) $(MotifLocator_SOURCES) \
-	$(MotifModelShuffler_SOURCES) $(MotifRanking_SOURCES) \
-	$(MotifSampler_SOURCES) $(MotifScanner_SOURCES) \
-	$(PhyloSampler_SOURCES) $(PriorMotifSampler_SOURCES)
-DIST_SOURCES = $(BackgroundScore_SOURCES) \
-	$(Block2MotifAligner_SOURCES) $(BlockAligner2_SOURCES) \
-	$(BlockRanking_SOURCES) $(BlockSampler_SOURCES) \
-	$(CiRES_SOURCES) $(CreateBackgroundModel_SOURCES) \
-	$(MotifClustering_SOURCES) $(MotifComparison_SOURCES) \
-	$(MotifLocator_SOURCES) $(MotifModelShuffler_SOURCES) \
-	$(MotifRanking_SOURCES) $(MotifSampler_SOURCES) \
-	$(MotifScanner_SOURCES) $(PhyloSampler_SOURCES) \
-	$(PriorMotifSampler_SOURCES)
+	$(MotifRanking_SOURCES) \
+	$(MotifSampler_SOURCES) 
+DIST_SOURCES = $(CreateBackgroundModel_SOURCES) \
+	 $(MotifComparison_SOURCES) \
+	$(MotifLocator_SOURCES)  \
+	$(MotifRanking_SOURCES) $(MotifSampler_SOURCES) 
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -257,9 +211,6 @@ AM_CXXFLAGS = \
 CreateBackgroundModel_SOURCES = mainCreateBackgroundModel.cpp
 CreateBackgroundModel_LDFLAGS = -all-static
 CreateBackgroundModel_LDADD = ../src/libinclusive.la
-BackgroundScore_SOURCES = mainBackgroundScore.cpp
-BackgroundScore_LDFLAGS = -all-static
-BackgroundScore_LDADD = ../src/libinclusive.la
 MotifComparison_SOURCES = mainMotifComparison.cpp
 MotifComparison_LDFLAGS = -all-static
 MotifComparison_LDADD = ../src/libinclusive.la
@@ -269,39 +220,9 @@ MotifLocator_LDADD = ../src/libinclusive.la
 MotifRanking_SOURCES = mainMotifRanking.cpp
 MotifRanking_LDFLAGS = -all-static
 MotifRanking_LDADD = ../src/libinclusive.la
-MotifScanner_SOURCES = mainMotifScanner.cpp
-MotifScanner_LDFLAGS = -all-static
-MotifScanner_LDADD = ../src/libinclusive.la
 MotifSampler_SOURCES = mainMotifSampler.cpp
 MotifSampler_LDFLAGS = -all-static
 MotifSampler_LDADD = ../src/libinclusive.la
-PriorMotifSampler_SOURCES = mainPriorMotifSampler.cpp
-PriorMotifSampler_LDFLAGS = -all-static
-PriorMotifSampler_LDADD = ../src/libinclusive.la
-PhyloSampler_SOURCES = mainPhyloSampler.cpp
-PhyloSampler_LDFLAGS = -all-static
-PhyloSampler_LDADD = ../src/libinclusive.la
-BlockSampler_SOURCES = mainBlockSampler.cpp
-BlockSampler_LDFLAGS = -all-static
-BlockSampler_LDADD = ../src/libinclusive.la
-BlockRanking_SOURCES = mainBlockRanking.cpp
-BlockRanking_LDFLAGS = -all-static
-BlockRanking_LDADD = ../src/libinclusive.la
-Block2MotifAligner_SOURCES = mainBlock2MotifAligner.cpp
-Block2MotifAligner_LDFLAGS = -all-static
-Block2MotifAligner_LDADD = ../src/libinclusive.la
-MotifModelShuffler_SOURCES = mainMotifModelShuffler.cpp
-MotifModelShuffler_LDFLAGS = -all-static
-MotifModelShuffler_LDADD = ../src/libinclusive.la
-CiRES_SOURCES = mainCiRES.cpp
-CiRES_LDFLAGS = -all-static
-CiRES_LDADD = ../src/libinclusive.la
-BlockAligner2_SOURCES = mainBlockAligner2.cpp
-BlockAligner2_LDFLAGS = -all-static
-BlockAligner2_LDADD = ../src/libinclusive.la
-MotifClustering_SOURCES = mainMotifClustering.cpp
-MotifClustering_LDFLAGS = -all-static
-MotifClustering_LDADD = ../src/libinclusive.la
 all: all-am
 
 .SUFFIXES:
@@ -363,54 +284,22 @@ clean-binPROGRAMS:
 	  echo " rm -f $$p $$f"; \
 	  rm -f $$p $$f ; \
 	done
-BackgroundScore$(EXEEXT): $(BackgroundScore_OBJECTS) $(BackgroundScore_DEPENDENCIES) 
-	@rm -f BackgroundScore$(EXEEXT)
-	$(CXXLINK) $(BackgroundScore_LDFLAGS) $(BackgroundScore_OBJECTS) $(BackgroundScore_LDADD) $(LIBS)
-Block2MotifAligner$(EXEEXT): $(Block2MotifAligner_OBJECTS) $(Block2MotifAligner_DEPENDENCIES) 
-	@rm -f Block2MotifAligner$(EXEEXT)
-	$(CXXLINK) $(Block2MotifAligner_LDFLAGS) $(Block2MotifAligner_OBJECTS) $(Block2MotifAligner_LDADD) $(LIBS)
-BlockAligner2$(EXEEXT): $(BlockAligner2_OBJECTS) $(BlockAligner2_DEPENDENCIES) 
-	@rm -f BlockAligner2$(EXEEXT)
-	$(CXXLINK) $(BlockAligner2_LDFLAGS) $(BlockAligner2_OBJECTS) $(BlockAligner2_LDADD) $(LIBS)
-BlockRanking$(EXEEXT): $(BlockRanking_OBJECTS) $(BlockRanking_DEPENDENCIES) 
-	@rm -f BlockRanking$(EXEEXT)
-	$(CXXLINK) $(BlockRanking_LDFLAGS) $(BlockRanking_OBJECTS) $(BlockRanking_LDADD) $(LIBS)
-BlockSampler$(EXEEXT): $(BlockSampler_OBJECTS) $(BlockSampler_DEPENDENCIES) 
-	@rm -f BlockSampler$(EXEEXT)
-	$(CXXLINK) $(BlockSampler_LDFLAGS) $(BlockSampler_OBJECTS) $(BlockSampler_LDADD) $(LIBS)
-CiRES$(EXEEXT): $(CiRES_OBJECTS) $(CiRES_DEPENDENCIES) 
-	@rm -f CiRES$(EXEEXT)
-	$(CXXLINK) $(CiRES_LDFLAGS) $(CiRES_OBJECTS) $(CiRES_LDADD) $(LIBS)
+
 CreateBackgroundModel$(EXEEXT): $(CreateBackgroundModel_OBJECTS) $(CreateBackgroundModel_DEPENDENCIES) 
 	@rm -f CreateBackgroundModel$(EXEEXT)
 	$(CXXLINK) $(CreateBackgroundModel_LDFLAGS) $(CreateBackgroundModel_OBJECTS) $(CreateBackgroundModel_LDADD) $(LIBS)
-MotifClustering$(EXEEXT): $(MotifClustering_OBJECTS) $(MotifClustering_DEPENDENCIES) 
-	@rm -f MotifClustering$(EXEEXT)
-	$(CXXLINK) $(MotifClustering_LDFLAGS) $(MotifClustering_OBJECTS) $(MotifClustering_LDADD) $(LIBS)
 MotifComparison$(EXEEXT): $(MotifComparison_OBJECTS) $(MotifComparison_DEPENDENCIES) 
 	@rm -f MotifComparison$(EXEEXT)
 	$(CXXLINK) $(MotifComparison_LDFLAGS) $(MotifComparison_OBJECTS) $(MotifComparison_LDADD) $(LIBS)
 MotifLocator$(EXEEXT): $(MotifLocator_OBJECTS) $(MotifLocator_DEPENDENCIES) 
 	@rm -f MotifLocator$(EXEEXT)
 	$(CXXLINK) $(MotifLocator_LDFLAGS) $(MotifLocator_OBJECTS) $(MotifLocator_LDADD) $(LIBS)
-MotifModelShuffler$(EXEEXT): $(MotifModelShuffler_OBJECTS) $(MotifModelShuffler_DEPENDENCIES) 
-	@rm -f MotifModelShuffler$(EXEEXT)
-	$(CXXLINK) $(MotifModelShuffler_LDFLAGS) $(MotifModelShuffler_OBJECTS) $(MotifModelShuffler_LDADD) $(LIBS)
 MotifRanking$(EXEEXT): $(MotifRanking_OBJECTS) $(MotifRanking_DEPENDENCIES) 
 	@rm -f MotifRanking$(EXEEXT)
 	$(CXXLINK) $(MotifRanking_LDFLAGS) $(MotifRanking_OBJECTS) $(MotifRanking_LDADD) $(LIBS)
 MotifSampler$(EXEEXT): $(MotifSampler_OBJECTS) $(MotifSampler_DEPENDENCIES) 
 	@rm -f MotifSampler$(EXEEXT)
 	$(CXXLINK) $(MotifSampler_LDFLAGS) $(MotifSampler_OBJECTS) $(MotifSampler_LDADD) $(LIBS)
-MotifScanner$(EXEEXT): $(MotifScanner_OBJECTS) $(MotifScanner_DEPENDENCIES) 
-	@rm -f MotifScanner$(EXEEXT)
-	$(CXXLINK) $(MotifScanner_LDFLAGS) $(MotifScanner_OBJECTS) $(MotifScanner_LDADD) $(LIBS)
-PhyloSampler$(EXEEXT): $(PhyloSampler_OBJECTS) $(PhyloSampler_DEPENDENCIES) 
-	@rm -f PhyloSampler$(EXEEXT)
-	$(CXXLINK) $(PhyloSampler_LDFLAGS) $(PhyloSampler_OBJECTS) $(PhyloSampler_LDADD) $(LIBS)
-PriorMotifSampler$(EXEEXT): $(PriorMotifSampler_OBJECTS) $(PriorMotifSampler_DEPENDENCIES) 
-	@rm -f PriorMotifSampler$(EXEEXT)
-	$(CXXLINK) $(PriorMotifSampler_LDFLAGS) $(PriorMotifSampler_OBJECTS) $(PriorMotifSampler_LDADD) $(LIBS)
 
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
@@ -418,22 +307,11 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainBackgroundScore.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainBlock2MotifAligner.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainBlockAligner2.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainBlockRanking.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainBlockSampler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainCiRES.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainCreateBackgroundModel.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainMotifClustering.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainMotifComparison.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainMotifLocator.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainMotifModelShuffler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainMotifRanking.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainMotifSampler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainMotifScanner.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainPhyloSampler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/mainPriorMotifSampler.Po@am__quote@
 
 .cpp.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \

@@ -6,7 +6,7 @@ using namespace INCLUSIVE;
 
 
 BlockSamplerRun::BlockSamplerRun(string* pFasta, string* pRootID, strand_modes strand)
-  : MotifSamplerRun(pFasta, strand)
+  : MotifSamplerRun(pFasta, strand, NULL)
 {
   
   // set the root sequence pointer

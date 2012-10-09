@@ -9,7 +9,7 @@ INCLUDES =\
 
 AM_CXXFLAGS =\
 	 -Wall\
-	 -g -pg
+	 -g -pg -static
 
 lib_LTLIBRARIES = libinclusive.la
 

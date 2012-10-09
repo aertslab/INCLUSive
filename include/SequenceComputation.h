@@ -13,7 +13,7 @@ class SequenceComputation{
     SequenceObject *_pSeqObj;
     BackgroundModel * _pBgModel;
     int _wlength; // current motif length
-		int _length;  // sequence length
+    int _length;  // sequence length
     bool _correct;
   
     // internal score vectors
@@ -22,6 +22,7 @@ class SequenceComputation{
     ScoreVector *_pBackgroundScore;
     ScoreVector *_pExpWx;
     MaskVector *_pMask;
+    ScoreVector *_pPspScore;
   
     // reverse strand score vectors
     ScoreVector *_pRevMotifScore;
@@ -29,6 +30,7 @@ class SequenceComputation{
     ScoreVector *_pRevBackgroundScore;
     ScoreVector *_pRevExpWx;
     MaskVector *_pRevMask;
+    ScoreVector *_pRevPspScore;
  
     ScoreVector *_pCopyProbDistr;
     ScoreVector *_pRevCopyProbDistr;
@@ -58,7 +60,9 @@ class SequenceComputation{
     void UpdateInstanceMotifScore(PWM *pMotif, strand_modes STRAND);
     void UpdateInstanceBackgroundScore(BackgroundModel *pBg, int wLength, strand_modes STRAND);
     void UpdateSequenceBackgroundScore(BackgroundModel *pBg, strand_modes STRAND);
-    void UpdateInstanceExpWx(strand_modes STRAND); 
+    void UpdateInstanceExpWx(strand_modes STRAND, bool psp); 
+    void UpdateInstanceExpWx(strand_modes STRAND){UpdateInstanceExpWx(STRAND, 0); return;};// for BlockSamplerRun
+    void UpdatePspScores(ScoreVector * psp, strand_modes STRAND);
   
     // mask operations
     void UpdateMask(int start, int w, int value, strand_modes STRAND);
@@ -80,6 +84,7 @@ class SequenceComputation{
 		int GetMotifLength() const {return _wlength;};
     double GetWxAt(int ndx, strand_modes STRAND) const;
     double GetMotifScoreAt(int ndx, strand_modes STRAND) const ;
+    double GetPspScoreAt(int ndx, strand_modes STRAND) const ;
     double GetBackgroundScoreAt(int ndx, strand_modes STRAND) const;
     double GetLogBackgroundScore(strand_modes STRAND) const;
     MaskVector * GetMask(strand_modes STRAND);    

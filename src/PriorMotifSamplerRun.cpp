@@ -5,7 +5,7 @@
 using namespace INCLUSIVE;
 
 PriorMotifSamplerRun::PriorMotifSamplerRun(string* pFasta, strand_modes strand, PWM* pPriorMotif)
-  : MotifSamplerRun(pFasta, strand) 
+  : MotifSamplerRun(pFasta, strand, NULL) 
 {
 
   // set length of the search equal to the length of the prior motif

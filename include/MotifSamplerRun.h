@@ -46,10 +46,11 @@ class MotifSamplerRun{
   int _overlap;
   string *_pId;
   double _scale;
+  string _pspSetting;
 
  // motif model
   double* _pPseudoCounts;
-  Counts _pLocalCounts;
+  double** _pLocalCounts; // double instead of Counts because of PSP
   PWM *_localMotif;
 
   // background model
@@ -66,7 +67,7 @@ class MotifSamplerRun{
  public:
 
   // constructor
-  MotifSamplerRun(string * pFastaFile, strand_modes strand);
+  MotifSamplerRun(string * pFastaFile, strand_modes strand, GFFWriter * pgff);
   
   // destructor
   ~MotifSamplerRun();
@@ -107,8 +108,12 @@ class MotifSamplerRun{
   void UpdateBackgroundScores();
   bool UpdateBackgroundScore(const string& pID, BackgroundModel *pBgM);
 
+  // psp scores
+  bool UpdatePspScores(string * pPspFile, string psp);
+
   // motif manipulation -> stored in _localMotif
-  void BuildMotifFromInstanceMap();
+  void BuildMotifFromInstanceMap(bool checkpsp);
+  void BuildMotifFromInstanceMap(){ BuildMotifFromInstanceMap(0); return;} // for BlockSamplerRun
   void BuildMotifFromReducedInstanceMap(SequenceObject *pSeq);
   PWM * GetMotifModel();
   double LogLikelihoodScore();
@@ -117,6 +122,7 @@ class MotifSamplerRun{
   int NumberOfSequences(){ return _nbrSequences;};
   int NumberOfInstances(){ return _nbrInstances;};
   int NumberOfSequencesWithInstances(){ return _nbrSequencesWithInstances;};
+  SequenceComputation * FindSequence(string * id);
 
   // different steps in procedure
   void InitializationStep(int iterations);
@@ -134,7 +140,7 @@ class MotifSamplerRun{
   void StderrPrintMotifInfo();
   void PrintInstanceMap(GFFWriter *pGFFout, string* pSource);
   void StderrPrintInstanceMap();
-  void LinkFiles(GFFWriter * pgff1, GFFWriter * pgff2){ _pgffio = pgff1; _pgfftrack = pgff2; return;}
+  void LinkFiles(GFFWriter * pgff2){ _pgfftrack = pgff2; return;}
   void PrintTrackPositions(int i);
 
 };

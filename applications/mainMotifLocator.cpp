@@ -1,4 +1,5 @@
 // 27 march 2012 : adjust cerr reporting => cerrstr
+// 28 sept 2012 : error (and exit) for incorrect PWM format reading
 
 #include "utilities.h"
 #include "PWMIO.h"
@@ -261,8 +262,21 @@ main(int argc, char *argv[])
 
   cerr << "MotifLocator : Loading matrices... ";
   int count = 0; 
-  while (pwmIO->IsOpen() && (myMatrix = pwmIO->ReadMatrix()) && (pwmIO->GetError() == NULL) )
+  while (pwmIO->IsOpen())
   {
+    myMatrix = pwmIO->ReadMatrix();
+    if (myMatrix == NULL && (pwmIO->GetError()) != NULL) 
+    { 
+      cerr << *(pwmIO->GetError()) << endl;
+      pGFFStream->AddComment(pwmIO->GetError()); 
+      cerrstr << "--Error: MotifLocator : incorrect matrix format found in matrix input file." << endl;
+      pGFFStream->AddComment(cerrstr.str());
+      cerrstr.flush(); // flush 
+      wronginput = true;
+	  break;
+	}
+    if (myMatrix == NULL){break;} // processing not-matrix lines... end of file
+    //
     bool bMatching = false;
     if (bList)
     {
@@ -325,16 +339,13 @@ main(int argc, char *argv[])
   }
   cerr << count << " matrices loaded." << endl;
 
-  wronginput = false;
-  if ( pwmIO->GetError() != NULL) { pGFFStream->AddComment(pwmIO->GetError()); wronginput = true;}
-  else 
-  { if (count == 0) // count == 0
-    { cerrstr << "--ERROR: MotifLocator: No usable input matrix found." << endl;
-      pGFFStream->AddComment(cerrstr.str());
-      cerrstr.flush(); // flush
-      wronginput = true;   
-    }
+  if (!wronginput && count == 0) // count == 0
+  { cerrstr << "--ERROR: MotifLocator: No usable input matrix found." << endl;
+    pGFFStream->AddComment(cerrstr.str());
+    cerrstr.flush(); // flush
+    wronginput = true;   
   }
+
   FastaIO *fileIO = NULL;
   if (!wronginput)
   {
@@ -573,10 +584,10 @@ instructions()
   cout << "  -f <fastaFile>      Sequences in FASTA format" << endl;
   cout << "  -b <bgFile>         File containing the background model description" << endl;
   cout << "  -m <matrixFile>     File containing the matrix model descriptions" << endl;
+  cout << "  -o <outFile>        Output file to write results in GFF (default stdout)" << endl;
   cout << endl;
   cout << " Optional Arguments" << endl;
   cout << "  -t <value>          Sets threshold above which a motif is selected (default 0.85)." << endl;
-  cout << "  -o <outFile>        Output file to write results in GFF (default stdout)" << endl;
   cout << "  -l <listFile>       File with a list of identifiers to select individual" << endl;
   cout << "                      matrices from the matrix file. IDs that are not found are omitted." << endl;
   cout << "  -s <0|1>            Select strand. (default both)" << endl;
@@ -601,6 +612,7 @@ version()
   cout << "- (3.1.5) 02/03/10 : bug fixed in -a user parameter. " << endl;
   cout << "- (3.1.5) 07/04/11 : minor revisions in output formatting" << endl;
   cout << "- (3.1.5) 14/03/12 : output error messages to user file." << endl;
+  cout << "- (3.2.0) 28/09/12 : exit on PWM-reading error." << endl;
   cout << "- end." << endl;
   cout << endl;
 } 

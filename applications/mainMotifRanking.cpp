@@ -2,6 +2,7 @@
 // GFFWriter.h/cpp
 // report extra output to tracking file (-t)
 // 20 march 2012 : adjust cerr reporting => cerrstr
+// 28 sept 2012 : error (and exit) for incorrect PWM format reading
 
 #include "utilities.h"
 #include "PWMIO.h"
@@ -146,16 +147,18 @@ main(int argc, char *argv[])
   }
 
   // no cerrstr reporting, error is covered in website interface
-  if (!bMatrix) // leave bOut, text output will still go to screen
+  if (!bMatrix || !bOut) 
   {
     instructions();
     cleanup();
     exit(-1);
   }
+
   GFFWriter *pgffText = NULL;
   // open file for output writing 
   if (bOut2) pgffText = new GFFWriter(textFile);
   else pgffText = new GFFWriter();
+
 
   if (wronginput)
   { 
@@ -171,7 +174,7 @@ main(int argc, char *argv[])
   // process input matrix file
   PWMIO *pwmIO = new PWMIO(matrixFile, READ);
   // open matrix stream reader
-  if (pwmIO->GetError() != NULL) // comes to the same as (!pwmIO->IsOpen())
+  if (pwmIO->GetError() != NULL) // (file is not open)
   {
     pgffText->AddComment(pwmIO->GetError()); 
     delete pgffText; pgffText = NULL;  
@@ -194,8 +197,22 @@ main(int argc, char *argv[])
   list <PWM*>matrixList;
   list <PWM*>::iterator matIter;
   int inputcount = 0; //and count how many motifs are loaded
-  while (pwmIO->IsOpen() && (myMatrix = pwmIO->ReadMatrix()))
-  { if (myMatrix == NULL) break;
+  while (pwmIO->IsOpen())
+  { myMatrix = pwmIO->ReadMatrix(); 
+    if (myMatrix == NULL && (pwmIO->GetError()) != NULL) 
+    { 
+      cerr << *(pwmIO->GetError()) << endl;
+      pgffText->AddComment(pwmIO->GetError()); 
+      cerr << "--Error: MotifRanking : incorrect matrix format found in matrix input file." << endl;
+      cerrstr << "--Error: MotifRanking : incorrect matrix format found in matrix input file." << endl;
+      pgffText->AddComment(cerrstr.str());
+      cerrstr.flush(); // flush
+      delete pgffText; pgffText = NULL;  
+      delete pwmFile; pwmFile = NULL;
+      cleanup(); exit(-1);
+    }
+    if (myMatrix == NULL){break;} // processing not-matrix lines end-of-file
+    //
     matrixList.push_back(myMatrix); 
     inputcount++;
   }
@@ -203,6 +220,7 @@ main(int argc, char *argv[])
   delete pwmIO; pwmIO = NULL;
   if (inputcount == 0)
   {
+    cerr << "--Error: MotifRanking : no usable matrix found in matrix input file." << endl;
     cerrstr << "--Error: MotifRanking : no usable matrix found in matrix input file." << endl;
     pgffText->AddComment(cerrstr.str());
     cerrstr.flush(); // flush  
@@ -247,7 +265,6 @@ main(int argc, char *argv[])
     }
     // no exit, just go on with default values
   } 
-
   double score = 0,
     maxScore = 0;
   // set scores if asked for CS or LL
@@ -398,6 +415,10 @@ instructions()
   cout << " Required Arguments" << endl;
   cout << "  -i <matrixFile>     File containing the matrix model descriptions" << endl;
   cout << endl;
+  cout << " Output Arguments" << endl;
+  cout << "  -o <outFile>        Output file to write matrix results to." << endl;
+  cout << "  -O <outFile>        Output file to write txt results to (default screen)." << endl;
+  cout << endl;
   cout << " Optional Arguments" << endl;
   cout << "  -m <0|1|2>          Select the type of score: " << endl;
   cout << "                       0 = Score defined in matrix file (default)" << endl;
@@ -411,10 +432,6 @@ instructions()
   cout << "                      Default<1>." << endl;
   cout << "  -x <value>          Minimum required overlap between motif models." << endl;
   cout << "                      Default<6>. " << endl;
-  cout << endl;
-  cout << " Output Arguments" << endl;
-  cout << "  -o <outFile>        Output file to write matrix results to." << endl;
-  cout << "  -O <outFile>        Output file to write txt results to (default screen)." << endl;
   cout << endl;
   cout << "  -v                  Version of MotifRanking" << endl;
   cout << "Version " << VERSION << endl;
@@ -439,6 +456,7 @@ version()
   cout << "- (3.1.5) 29/04/11 : debug wrongly re-assignment of assigned motifs." << endl;
   cout << "- (3.1.5) 22/07/11 : add RR in output formatting" << endl;
   cout << "- (3.1.5) 14/03/12 : output error messages to user file." << endl;
+  cout << "- (3.2.0) 28/09/12 : exit on PWM-reading error." << endl;
   cout << "- end." << endl;
   cout << endl;
 } 

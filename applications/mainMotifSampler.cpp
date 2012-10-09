@@ -2,6 +2,7 @@
 // include extensions on # instances/sequence (see 3.1.3)
 // report extra output to tracking file (-t)
 // 20 march 2012 : adjust cerr reporting => cerrstr
+// 19 Sept 2012 : implement Position Specific Prior (3.2.0), option -q/-Q 
 
 #include "inclusive.h"
 #include "utilities.h"
@@ -24,7 +25,7 @@
 #include <climits>//
 #include <ctime>//
 
-#define OPTIONS "f:b:p:m:o:t:w:n:s:x:r:M:S:v"
+#define OPTIONS "f:b:p:q:Q:m:o:t:w:n:s:x:r:M:S:vh?"
 
 
 // function prototypes
@@ -35,6 +36,7 @@ void cleanup();
 // define some global variables to store strings
 string *fastaFile = NULL,
   *bgFile = NULL,
+  *pspFile = NULL,
   *outputFile = NULL,
   *matrixFile = NULL,
   *trackFile = NULL,
@@ -48,6 +50,7 @@ main(int argc, char *argv[])
   RandomNumber::InitRandomNumber();
   bool bFasta = false,
     bBG = false,
+	bPSP = false,
     bOut = false,
     bMatrix = false;
     //bMax = false;
@@ -55,6 +58,7 @@ main(int argc, char *argv[])
   char c;
   // double priorValue = 0.5;
   string _pDefault = "0.9_0.25"; // default prior input
+  string _pPSPimpact = "n"; // apply prior in update step
   strand_modes bStrand = both;
   int wLength = 8,
     overlap = 1, // 
@@ -106,12 +110,26 @@ main(int argc, char *argv[])
     case 'p':
       priorInput = new string(optarg);
       break;
+    case 'q':
+      pspFile = new string(optarg);
+      bPSP = true;
+      break;
+    case 'Q': // set PSP correction impact
+      _pPSPimpact = string(optarg);
+      if ( _pPSPimpact != "s" && _pPSPimpact != "b" && _pPSPimpact != "u" && _pPSPimpact != "n")
+      {
+        cerr << "ERROR: -Q input should be b|u|s|n." << endl;
+        cerrstr << "ERROR: -Q input should be b|u|s|n." << endl;
+        wronginput = true;
+        //cleanup(); exit(-1);
+      }
+      break;
     case 'w':
       wLength = atoi(optarg);
       if (wLength <= 1)
       {
-        cerr << "ERROR: -w motif length should be greater than 1" << endl;
-        cerrstr << "ERROR: -w motif length should be greater than 1" << endl;
+        cerr << "ERROR: -w motif length should be higher than 0." << endl;
+        cerrstr << "ERROR: -w motif length should be higher than 0." << endl;
         wronginput = true;
         //cleanup(); exit(-1);
       }
@@ -120,8 +138,8 @@ main(int argc, char *argv[])
       nbrMotifs = atoi(optarg);
       if (nbrMotifs < 1)
       {
-        cerr << "ERROR: -n number of different motifs should be greater than 1." << endl;
-        cerrstr << "ERROR: -n number of different motifs should be greater than 1." << endl;
+        cerr << "ERROR: -n number of different motifs should be higher than 0." << endl;
+        cerrstr << "ERROR: -n number of different motifs should be higher than 0." << endl;
         wronginput = true;
         //cleanup(); exit(-1);
       }
@@ -142,8 +160,8 @@ main(int argc, char *argv[])
       runs = atoi(optarg);
       if (runs < 1)
       {
-        cerr << "ERROR: -r number of runs should be greater than 1." << endl;
-        cerrstr << "ERROR: -r number of runs should be greater than 1." << endl;
+        cerr << "ERROR: -r number of runs should be higher than 0." << endl;
+        cerrstr << "ERROR: -r number of runs should be higher than 0." << endl;
         wronginput = true;
         //cleanup(); exit(-1);
       }
@@ -163,8 +181,8 @@ main(int argc, char *argv[])
       maxInstances = atoi(optarg);
       if ( maxInstances < 1 )
       {
-        cerr << "ERROR: -M is smaller than 1. Algorithm will not use this value." << endl;
-        cerrstr << "ERROR: -M is smaller than 1. Algorithm will not use this value." << endl;
+        cerr << "ERROR: -M maximal number of instances per sequence should be higher than 0." << endl;
+        cerrstr << "ERROR: -M maximal number of instances per sequence should be higher than 0." << endl;
         wronginput = true;
         //cleanup(); exit(-1);
         //bMax = false;
@@ -182,7 +200,7 @@ main(int argc, char *argv[])
       exit(-1);
     default:
       cerr << "-- MotifSampler: Error in input getopt() function" << endl;
-      cerrstr << "MotifSampler: Error in input getopt() function" << endl; 
+      cerrstr << "--MotifSampler: Error in input getopt() function" << endl; 
       wronginput = true;
       //cleanup(); exit(-1);
     }
@@ -387,6 +405,8 @@ main(int argc, char *argv[])
     wronginput = true;
     //cleanup(); exit(-1);
   }
+//=========================================================
+
   if (wronginput)
   { 
     // report to file if file is available
@@ -435,26 +455,6 @@ main(int argc, char *argv[])
     cleanup(); exit(-1);  
   }
 
-
-//=========================================================
-	
-/* DEBUG: to be used for intermediate reporting
-	cerr << "debug -output priors" << endl;
-	ScoreVector * pDist = NULL;
-	for(int i = 0; i < (int)_pPriorDistrs->size(); i++)
-	{ cerr << "i=" << i << "  ";
-	  if ((*_pPriorDistrs)[i] == NULL) cerr << "NULL" << endl;
-	  else
-		{ 
-			pDist = (*_pPriorDistrs)[i]->GetVector();
-			cerr << "M=" << (int)pDist->size()-1 << "[" ;
-			for(int ii = 0; ii < (int)pDist->size(); ii++)
-				cerr << (*pDist)[ii] << ",";
-			cerr << "]" << endl;
-		}
-	}
-*/
-
   // initialize file to write motif models
   PWMIO *pwmFile = NULL;
   if (bMatrix) // this means it is intended to have PWM reporting
@@ -485,6 +485,31 @@ main(int argc, char *argv[])
   GFFWriter *pGffTrack = NULL;
   if ( trackFile != NULL) pGffTrack = new GFFWriter(trackFile);
 
+  // reset some settings depending on the input
+  string warning = "";
+  if (_pPSPimpact == "n")
+  {  if (bPSP == true)
+       // give warning that PSP file will not be used
+       warning = "WARNING: the supplied PSP file (-q) will not be used as -Q was set to 'n' (=apply no PSP correction).\n";
+     bPSP = false; // reset
+  }
+  else 
+  { if (bPSP == false)
+      // give warning that no PSP will be used 
+      // (i.e. default neutral PSP, all probs are set to '1')
+      warning = "WARNING: no PSP correction (yet -Q differs from 'n') will be applied as no PSP file (-q) is provided.\n";
+  }
+  if (warning != "")
+  {
+    cerr << warning;
+    if (bOut)
+    {
+      cerrstr << warning;
+      pGffIO->AddComment(cerrstr.str());
+      cerrstr.flush(); // flush
+    }
+  }
+
   int errorSampling = 0;
   int errorMasking = 0;
   int retrievedMotifs = 0;
@@ -493,19 +518,7 @@ main(int argc, char *argv[])
 
   // create a new MotifSampler object
   cerr << "Create MotifSampler run." << endl;
-  MotifSamplerRun *pMainRunner = new MotifSamplerRun(fastaFile, bStrand);
-
-  // set primary parameters of the algorithm
-  pMainRunner->SetMotifLength(wLength);
-  //cerr << "debug-maxInstances =  " << maxInstances << endl;
-  // pMainRunner->SetOneInstancePrior(priorValue);
-  pMainRunner->LinkNbrInstInfo(maxInstances, _pPriorDistrs, bSampling); // 
-  //cerr << "debug-bSampling =  " << bSampling << endl;
-  pMainRunner->SetOverlap(overlap);
-  // pass trackfile to MotifSamplerRun
-  pMainRunner->LinkFiles(pGffIO, pGffTrack);
-
-
+  MotifSamplerRun *pMainRunner = new MotifSamplerRun(fastaFile, bStrand, pGffIO);
   // check the number of sequences
   if (pMainRunner->NumberOfSequences() < 2)
   {
@@ -537,12 +550,50 @@ main(int argc, char *argv[])
     cleanup();
     exit(-1);
   }
+  // set primary parameters of the algorithm
+  pMainRunner->SetMotifLength(wLength);
+  // pMainRunner->SetOneInstancePrior(priorValue);
+  pMainRunner->LinkNbrInstInfo(maxInstances, _pPriorDistrs, bSampling); // 
+  //cerr << "debug-bSampling =  " << bSampling << endl;
+  pMainRunner->SetOverlap(overlap);
+  // pass trackfile to MotifSamplerRun
+  pMainRunner->LinkFiles(pGffTrack);
   // set background model and compute background model scores
   pMainRunner->SetBackgroundModel(pBgModel);
   pMainRunner->UpdateBackgroundScores();
+  // set the PSP information
+  if (bPSP) 
+  { if (!(pMainRunner->UpdatePspScores(pspFile, _pPSPimpact)))
+    { // exit as incorrect PSP input
+      cerr << "--ERROR: incorrect processing of PSP information."<< endl;
+      if (bOut)
+      {  
+        cerrstr << "--ERROR: incorrect processing of PSP information."<< endl;
+        cerrstr << "#Check our MotifSuite webpage for correct input format. Or contact us, we will be happy to help." << endl;
+        pGffIO->AddComment(cerrstr.str());
+        cerrstr.flush(); // flush  
+      }
+      // cleanup local variables
+      delete pGffIO; pGffIO = NULL;
+      if (bMatrix) delete pwmFile; pwmFile = NULL;
+      if ( trackFile != NULL) delete trackFile; trackFile = NULL;
+      if (_pPriorDistrs != NULL)
+      { // cleanup distributions
+        for(int i = 0; i < (int)_pPriorDistrs->size(); i++)
+        { if ( (*_pPriorDistrs)[i] != NULL)
+            delete (*_pPriorDistrs)[i];
+        }
+        delete _pPriorDistrs;
+      }
+      _pPriorDistrs = NULL;
+      delete pMainRunner;
+      cleanup();
+      exit(-1);
+    }
+  }
 
   // 22 juli 2011
-  string * intro = new string("#see end of file for a summary of results.\n#The multiple motifs in this file are the result of stochastic motif detection repeats on a given sequences dataset.\n#Please proceed with extraction of the most likely true motif(s) embedded in this file by using MotifRanking (quick assessment) or FuzzyClustering (more refined assessment). Both post processing tools are available in MotifSuite on our webserver where you can also consult our guidelines.\n");
+  string * intro = new string("#see end of file for a summary of results.\n#The multiple motifs in this file are the result of stochastic motif detection repeats on a given sequences dataset.\n#Please proceed with extraction of the most likely true motif(s) embedded in this file by using MotifRanking (quick assessment) or FuzzyClustering (more refined assessment). Both post processing tools are available in MotifSuite on our webserver on which you can also consult our guidelines.\n");
   pGffIO->AddComment(intro);
   delete intro; intro = NULL;
 
@@ -809,7 +860,7 @@ if (errorMasking>= 10 && errorMasking >= (int)0.2 * runs)
   // convert number
   sprintf(pTmpChar, "%d", errorMasking);
   pSummary->append(pTmpChar);
-  pSummary->append(" runs were aborted for searching a next motif most probably because of too much sequence masking by earlier retrieved putative motifs in this run. Check if -N entry is not unreasonably low. Alternatively, you may want to repeat the program with a lower -n (number of motifs) yet higher -r (number of runs) and explore more of the top ranked motifs (use MotifRanking).\n");
+  pSummary->append(" runs were aborted for searching a next motif most probably because of too much sequence masking by earlier retrieved motifs in this run. Alternatively, you may want to repeat the program with a lower -n (number of motifs) yet higher -r (number of runs) and explore more of the top ranked motifs (use MotifRanking).\n");
 }
 
 
@@ -873,21 +924,23 @@ instructions()
   cout << "  -f <fastaFile>      Sequences in FASTA format" << endl;
   cout << "  -b <bgFile>         File containing the background model description."<< endl;
   cout << endl;
+  cout << " Output Arguments" << endl;
+  cout << "  -o <outFile>        Output file to write putative motifs in instances format (default stdout)." << endl;
+  cout << "  -m <matrixFile>     Output file to write putative motifs in pwm format (default not used)." << endl;
+  //cout << "  -t <trackFile>      Output file to track sampled positions (default not used)." << endl;
+  cout << endl;
   cout << " Optional Arguments" << endl;
   cout << "  -s <0|1>            Select strand (default both)." << endl;
   cout << "                      0 is only input sequences, 1 includes reverse complement."<< endl;
   cout << "  -p <(u|b|e|f)values> Specifies the prior distribution on number of instances per sequence (default 0.9_0.25)."<< endl;
+  cout << "  -q <pspFile>        File containing Position Specific Prior information."<< endl;
+  cout << "  -Q <u|s|b|n>        Apply Position Specific Prior correction in (u)updating, (s)sampling, (b)both or (n)none steps.\n";
   cout << "  -M <value>          Sets the maximal number of instances per sequence (default 2)." << endl;
   cout << "  -n <value>          Sets number of different motifs to search for (default 1)."<< endl;
   cout << "  -w <value>          Sets the motif width (default 8)." << endl;
   cout << "  -x <value>          Sets allowed overlap between different motifs (default 1)." << endl;
   cout << "  -r <runs>           Set number of times the algorithm should be repeated (default 100)." << endl;
   cout << "  -S <0|1>            Sampling (1) versus estimation (0) of the number of instances per sequence to be searched for (default 1)." << endl;
-  cout << endl;
-  cout << " Output Arguments" << endl;
-  cout << "  -o <outFile>        Output file to write putative motifs in instances format (default stdout)." << endl;
-  cout << "  -m <matrixFile>     Output file to write putative motifs in pwm format (default not used)." << endl;
-  //cout << "  -t <trackFile>      Output file to track sampled positions (default not used)." << endl;
   cout << endl;
   cout << "Version " << VERSION << endl;
   cout << "Questions and Remarks: <mclaeys@qatar.net.qa>" << endl;
@@ -902,21 +955,20 @@ version()
   cout << "  Version " << VERSION << endl;
   cout << endl;
   cout << "Revision history : " << endl; 
-  cout << "- (3.1.2) 06/12/2005 : 4 bugs fixed : Utilities.cpp (LogDirichlet(), "
-       << "ComputeNInstancesProbability()),RandomNumber.cpp (GetUniform())."
+  cout << "- (3.1.2) 06/12/2005 : debug : Utilities/LogDirichlet()"
+       << "/ComputeNInstancesProbability(), RandomNumber/GetUniform()."
        << endl;
-  cout << "- (3.1.2) 18/10/2006 : 1 bug fixed : MotifSamplerRun.cpp "
-       << "(LogLikelihoodScore())." << endl;
-  cout << "- (3.1.2) 02/01/2008 : 1 bug fixed : MotifSamplerRun.cpp "
-       << "(UpdateMasksFromInstanceMape())." << endl;
-  cout << "- (3.1.5) 23/10/2009 : extenstions on # instances/sequence : " << endl
-       << "    -S : sampling versus estimation," << endl
-       << "    -p : input type of prior distribution." << endl;
+  cout << "- (3.1.2) 18/10/2006 : debug : MotifSamplerRun/"
+       << "LogLikelihoodScore()." << endl;
+  cout << "- (3.1.2) 02/01/2008 : debug : MotifSamplerRun/"
+       << "UpdateMasksFromInstanceMape()." << endl;
+  cout << "- (3.1.5) 23/10/2009 : upgrade option -p (prior) and implement -S (sampling)." << endl;
 //<< "    -t : extra output to trackfile." << endl;
-  cout << " - (3.1.5) 07/04/2011 : minor revisions in output formatting" << endl;
+  cout << "- (3.1.5) 07/04/2011 : minor revisions in output formatting" << endl;
   //cout << " - (3.1.5) 22/07/2011 : again very minor revisions in output formatting" << endl;
   cout << "- (3.1.5) 24/10/2011 : initial iterations = 19 instead of 20." << endl; 
   cout << "- (3.1.5) 14/03/2012 : output error messages to user file." << endl;
+  cout << "- (3.2.0) 17/09/2012 : (test-phase) implement Position Specific Prior (-q/-Q)." << endl;
   cout << endl;
 } 
 
@@ -930,6 +982,9 @@ cleanup()
   if (bgFile != NULL)
     delete bgFile;
   bgFile = NULL;
+  if (pspFile != NULL)
+    delete pspFile;
+  pspFile = NULL;
   if (matrixFile != NULL)
     delete matrixFile;
   matrixFile = NULL;

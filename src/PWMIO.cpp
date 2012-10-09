@@ -183,7 +183,7 @@ void
 ******************************************************************************/
 PWM *
 PWMIO::ReadMatrix()
-{
+{ 
   int W = 0, 
     nc = 0;
   float fA = 0.25,
@@ -214,6 +214,7 @@ PWMIO::ReadMatrix()
     _isOpenReading = 0;
     return NULL;
   }
+
   if (_ifs.eof())
   {
     _isOpenReading = 0;
@@ -272,6 +273,7 @@ PWMIO::ReadMatrix()
         score = (double) atof(pcValue);
       }
     }
+
     if (!_ifs.eof())
     {
       getline(_ifs, _pLine, '\n');
@@ -283,14 +285,15 @@ PWMIO::ReadMatrix()
       break;
     }
   }
-
+  
   // clean up temporary variables
   delete[] pcTag;
   delete[] pcValue;
 
   if ( bW )
-  {
-    for (int i = 0; i < W; i++)
+  { 
+    int i = 0;
+    for (; i < W; i++)
     {
       // check the format of the input line
       int nc = sscanf(_pLine.c_str(), "%f%f%f%f", &fA, &fC, &fG, &fT);
@@ -303,12 +306,15 @@ PWMIO::ReadMatrix()
       }
       else
       {
-        cerr << "--Warning-- PWMIO::ReadMatrix(): line is not as expected: " <<
-          _pLine << endl;
-      cerrstr <<  "--Warning-- PWMIO::ReadMatrix(): line is not as expected: " <<
-          _pLine << endl;
-      _pError = new string(cerrstr.str());
-      cerrstr.flush();
+        //cerr << "--Error-- PWMIO::ReadMatrix(): line is not as expected: " <<
+          //_pLine << " in PWM with id=" << *sId << endl;
+        cerrstr <<  "--Error-- PWMIO::ReadMatrix(): line (" <<
+          _pLine << ") is not as expected in PWM";
+        if (bID) cerrstr << " with ID=" << *sId;
+        cerrstr << endl;
+        _pError = new string(cerrstr.str());
+        cerrstr.flush();
+        break;
       }
       
       if (!_ifs.eof())
@@ -325,17 +331,16 @@ PWMIO::ReadMatrix()
         break;
       }
     }
+    if (i < W){ bW = false;} // reset so that no PWM is created
   }
-  
-  if ( !bID )
-    sId = new string("unknown");
-  
+
   if ( bW )
   {
     // create PWM object
     pModel = new PWM(W, pM, snf);
-    if ( bID )
-      pModel->SetID(sId);
+    if ( !bID )
+      sId = new string("unknown");
+    pModel->SetID(sId);
     if ( bCons )
       pModel->SetConsensus(sCons);
     
@@ -351,16 +356,14 @@ PWMIO::ReadMatrix()
   {
     pModel = NULL; 
   }
-  
+
   delete[] snf;
 
   if ( sId != NULL )
     delete sId;
   if ( sCons != NULL )
     delete sCons;
-  
   return pModel;
-
 }
 
 

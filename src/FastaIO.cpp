@@ -20,6 +20,8 @@
 ******************************************************************************/
 FastaIO::FastaIO(string * fileName)
 {
+  _pPSPerror = NULL;
+	
   // open file for reading
   _ifs.open(fileName->c_str(), ios::in);
 
@@ -78,6 +80,10 @@ FastaIO::~FastaIO()
   if (_ifs.good())
     _ifs.close();
 
+  if (_pPSPerror != NULL)
+    delete _pPSPerror;
+  _pPSPerror = NULL;
+	
   return;
 }
 
@@ -219,6 +225,119 @@ FastaIO::ReadDirichlet()
   delete input; input = NULL;
 
   return output;
+}
+
+/******************************************************************************
+  Description:  return id in line of format >id
+                and put pointer on the next line
+  Author_Date:  MC_2012/09/19
+******************************************************************************/
+string *
+FastaIO::ReadSeqID()
+{
+  // this line is read, cursor is moved to next line
+  string * readid = NULL;
+
+  if (_isOpen && _hasNext)
+  {
+    // store _pLine into string
+    readid = new string(_pLine);
+    readid->erase(0,1); // erase >
+    if ( readid->length() < 1) 
+    { delete readid; return NULL;} // no id was provided
+
+    // read next line
+    _pLine = ""; // reset
+    if (!_ifs.eof())
+    {
+      getline(_ifs, _pLine, '\n'); // this line should contain probs-data
+    }
+    _hasNext = false; // _pLine does not start with > now
+  }
+  return readid;
+}
+/******************************************************************************
+  Description:  read all the probs (L in total) available in _pLine
+                the values are separated by a space
+                the last L-w values must be zero
+                and put pointer on the next line (>)
+  Author_Date:  MC_2012/09/19
+******************************************************************************/
+ScoreVector *
+FastaIO::LoadPspData(int L, int w, bool skip)
+{
+  ScoreVector * pData = NULL;
+if (!skip) // else skip processing this line and put ready on next >line
+{
+  // _pLine format should be e.g. 0.4 0.6 0.8 ... 0.0 0.0 (or kommas or tabs)
+  string::size_type pos;
+  pos = _pLine.find_first_not_of(" \t0.123456789\n\r\f");
+  if ( pos != string::npos )
+  {
+    _pPSPerror = new string("--Error1--FastaIO::LoadPspData: only white spaces and decimals characters (with dots) allowed.");
+    return NULL;
+  }
+  // load the probs into Scorevector
+  int i = 0; // count how many entries loaded
+  double prob;
+  pData = new ScoreVector;
+  // now load data
+  while (!_pLine.empty())
+  { 
+    pos = _pLine.find_first_not_of("0.123456789");
+    istringstream istr(_pLine.substr(0,pos)); // convert to double
+    istr >> prob;
+    _pLine.erase(0,pos); // erase prob
+    while ( _pLine.find_first_of("\t ") == 0) _pLine.erase(0,1); // erase space
+    pData->push_back(prob);
+    i++;
+  }
+  // check if total pData equals L
+  if ( i != L)
+  {
+    if (i < L)
+      _pPSPerror = new string("--Error2--FastaIO::LoadPspData: too few psp entries described (must equal length of FASTA sequence).");
+    else
+      _pPSPerror = new string("--Error2--FastaIO::LoadPspData: too much psp entries described (must equal length of FASTA sequence)."); 
+    delete pData; pData = NULL;
+    return NULL;
+  }
+  // check if last L-w entries are 0.0
+  for (i = L-w+1; i < L; i++)
+  {
+    if ((*pData)[i] != 0)
+    {
+      _pPSPerror = new string("--Error3--FastaIO::LoadPspData: last (L-w) psp entries must be 0.");
+      delete pData; pData = NULL;
+      return NULL;
+    }
+  }
+}
+
+  // set pointer ready on next line
+  _pLine = "";
+  while (!_ifs.eof())
+  {
+    // read next line
+    getline(_ifs, _pLine, '\n');
+    // move to next line if line is empty and skip >>gene-group lines 
+    if (_pLine.empty() || (_pLine[0] == '>' && _pLine[1] == '>'))
+      continue;
+    if (_pLine[0] == '>')
+    {
+      break;
+    }
+  }
+  if (!_ifs.eof())
+  {
+    _hasNext = true;
+  }
+  else
+  {
+    _hasNext = false;
+  }
+
+  return pData;
 }
 
 
