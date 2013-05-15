@@ -424,10 +424,10 @@ Distribution::ApplyMask(int start, int length)
   if (!_normalized)
   {
     // delete vector if not normalized
-    cerr << "--Warning-- Distribution::ApplyMask(): all position set to 0 "
-         << "-> reset distribution to NULL." << endl;
-    // delete _dist;
-    // _dist = NULL;
+    //cerr << "--Warning-- Distribution::ApplyMask(): all position set to 0 "
+        // << endl;
+     //delete _dist;
+     //_dist = NULL;
   }
 
   return this;
@@ -453,7 +453,7 @@ Distribution::_Normalize()
   // do nothing if distribution is empty
   if (_dist == NULL)
   {
-    cerr << "--Warning-- Distribution::_Normalize(): _dist is NULL." << endl;
+    //cerr << "--Warning-- Distribution::_Normalize(): _dist is NULL." << endl;
     return false;
   }
 

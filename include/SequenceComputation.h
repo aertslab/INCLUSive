@@ -36,6 +36,7 @@ class SequenceComputation{
     ScoreVector *_pRevCopyProbDistr;
     // ScoreVector *_pPriorDistr;
     vector<Distribution*> * _priorDistrs; //
+    ScoreVector * _plogNormFactors;
     int _maxInst;
     bool _sampling; //
   

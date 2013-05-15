@@ -163,6 +163,36 @@ BackgroundModel::GetTransitionMatrixValueAt(int i, int j)
     return -1;
   }
 }
+/******************************************************************************
+  Description:  return max transition frequency for given nucleotide 
+  Author_Date:  MC_2013/02/04
+******************************************************************************/
+double 
+BackgroundModel::GetMaxTransitionMatrixValueAt(int j)
+{
+  double max = 0.0000000000000000000000000000001;
+  for (int i = 0; i < _length; i++)
+  {
+    if (_transitionMatrix[i][j] > max)
+      max = _transitionMatrix[i][j];
+  }
+  return max;
+}
+/******************************************************************************
+  Description:  return min transition frequency for given nucleotide 
+  Author_Date:  MC_2013/02/04
+******************************************************************************/
+double 
+BackgroundModel::GetMinTransitionMatrixValueAt(int j)
+{
+  double min = 1;
+  for (int i = 0; i < _length; i++)
+  {
+    if (_transitionMatrix[i][j] < min)
+      min = _transitionMatrix[i][j];
+  }
+  return min;
+}
 
 /******************************************************************************
   Method:       GetOligoFrequencyValueAt

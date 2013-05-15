@@ -379,6 +379,7 @@ version()
   cout << endl;
   cout << "Revision history : " << endl;
   cout << "- (3.1.5) 14/03/2012 : output error messages to user file." << endl;
+  cout << "- (3.2.1) 04/02/13 : no changes for CreateBackgroundModel." << endl;
   cout << endl; 
   return;
 }

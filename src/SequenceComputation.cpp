@@ -41,7 +41,8 @@ SequenceComputation::SequenceComputation(SequenceObject * pSeqObj)
   _pCopyProbDistr = new ScoreVector(10, 0);
   _pRevCopyProbDistr = new ScoreVector(10, 0);
   //_pPriorDistr = new ScoreVector(10, 0);
-  _priorDistrs = NULL; // will be linked to variable in main
+  _priorDistrs = NULL; // will be created in LinkNbrInstPrior
+  _plogNormFactors = NULL; // will be updated based on PSP
 
   // initial motif length is zero
   _wlength = 0;
@@ -121,7 +122,21 @@ SequenceComputation::~SequenceComputation()
   if (_pPriorDistr != NULL)
     delete _pPriorDistr;
   _pPriorDistr = NULL;*/
-  _priorDistrs = NULL; // do not delete, is done in main
+  //_priorDistrs = NULL; // do not delete, is done in main
+  // delete, new copies were created
+  if (_priorDistrs != NULL)
+  { // cleanup distributions
+    for(int i = 0; i < (int)_priorDistrs->size(); i++)
+    { if ( (*_priorDistrs)[i] != NULL)
+        delete (*_priorDistrs)[i];
+    }
+    delete _priorDistrs;
+  }
+  _priorDistrs = NULL;
+
+  if (_plogNormFactors != NULL)
+    delete _plogNormFactors;
+  _plogNormFactors = NULL;
 
 }
 
@@ -254,7 +269,7 @@ SequenceComputation::SetMask(MaskVector * pMask, strand_modes STRAND)
 
 /******************************************************************************
   Description:  LinkNbrInstPrior : link pointer and set _maxPriorSize
-  Author_Date:  MC_2009/10/19
+	  Author_Date:  MC_2013/03/11 : create local _priorDistr
 ******************************************************************************/
 void 
 SequenceComputation::LinkNbrInstPrior(int max, vector<Distribution*>* distrs)
@@ -284,8 +299,40 @@ SequenceComputation::LinkNbrInstPrior(int max, vector<Distribution*>* distrs)
   }
   else // other cases where we need the prior information
   {
-    // link the pointer
-    _priorDistrs = distrs;
+    // link the pointer 
+    //_priorDistrs = distrs;
+    // create/store a copy of the global variable into a local vector
+    // (because its contents may be changed sequence-specific by PSP)
+    _priorDistrs = new vector<Distribution *>;
+    for(int i = 0; i < (int)distrs->size(); i++)
+    { // create a copy of the Distribution
+      Distribution * pPriorDist = NULL;
+      if ((*distrs)[i] != NULL) 
+        pPriorDist = new Distribution((*distrs)[i]->GetVector());
+      _priorDistrs->push_back(pPriorDist);
+      pPriorDist = NULL;
+    }
+    // create the vector to store NORM-factors (computed based on PSP)
+    _plogNormFactors = new ScoreVector(_maxInst+1,0); 
+    (*_plogNormFactors)[0] = 0; // reset, entry is never used
+    // set the default NORM-factors to "C" (number of possible combinations)
+      // note : C code comes from utilities->ComputeNInstancesProbability)
+    // this C is used when PSP-is not defined (comes back to original design)
+    double logC;
+    for(int n = 1; n < _maxInst+1; n++)
+    {
+      logC = log((double) (_length - (n * _wlength) +1));
+      for (int i = 2; i <= n; i++)
+        logC += log((double) (_length - (n * _wlength) + i)) - log((double) i);
+      (*_plogNormFactors)[n] = logC;
+    }
+/*
+	  cerr << "debug-followup-SequenceComputation::LinkNbrInstPrior:" << 
+		  "_plogNormFactors default =(";
+	  for (int i = 0; i < _maxInst+1; i++)
+		  cerr << (*_plogNormFactors)[i] << " ";
+	  cerr << ")" << endl;
+	  */
   }
   //cerr << "debug--SequenceComputation::LinkNbrInstPrior - end" << endl;
   return;
@@ -588,6 +635,7 @@ SequenceComputation::UpdateCopyProbability(double prior, strand_modes STRAND)
                 all the time, the local is linked to main and can have different
                 prior-input formats now.
   Author-Date:  MC-2009/10/19
+  Author-Date:  MC-2013/03/11 : apply _plogNormFactors here
 ******************************************************************************/
 void
 SequenceComputation::UpdateCopyProbability(strand_modes STRAND)
@@ -645,7 +693,7 @@ SequenceComputation::UpdateCopyProbability(strand_modes STRAND)
 		
       // compute next value of CopyProbability
       nextValue =
-        _dLogP0 + ComputeNInstancesProbability(_pExpWx, copyNbr, _length,
+        _dLogP0 - (*_plogNormFactors)[copyNbr] + ComputeNInstancesProbability(_pExpWx, copyNbr, _length,
                                                _wlength);
 
       //if (!isinf(nextValue) && !isnan(nextValue) && nextValue != -HUGE_VAL)
@@ -737,7 +785,7 @@ SequenceComputation::UpdateCopyProbability(strand_modes STRAND)
 		
       // compute next value of CopyProbability
       nextValue =
-        _dLogP0 + ComputeNInstancesProbability(_pRevExpWx, copyNbr, _length,
+        _dLogP0 - (*_plogNormFactors)[copyNbr] + ComputeNInstancesProbability(_pRevExpWx, copyNbr, _length,
                                                _wlength);
 
       // if (!isinf(nextValue) && !isnan(nextValue) && nextValue != -HUGE_VAL)
@@ -1190,7 +1238,7 @@ SequenceComputation::SampleInstanceStart(vector < int >&pAlignmentVector,
         pDist->ApplyMask(ndx - _wlength + 1, 2 * _wlength);
         if ( !pDist->IsNormalized() )
         {
-          cerr << "SampleInstanceStart : distribution not normalized!!" << endl;
+          //cerr << "SampleInstanceStart : distribution not normalized!!" << endl;
           break; 
         }
       }
@@ -1202,7 +1250,7 @@ SequenceComputation::SampleInstanceStart(vector < int >&pAlignmentVector,
   }
   else
   {
-    cerr << "-- Warning -- SequenceComputation::SampleInstanceStart(): distribution is NULL." << endl;
+    //cerr << "-- Warning -- SequenceComputation::SampleInstanceStart(): distribution is NULL." << endl;
   }
   return;
 }
@@ -1261,7 +1309,7 @@ SequenceComputation::SampleUniformInstanceStart(vector<int>& pAlignmentVector, i
         pDist->ApplyMask(ndx - _wlength + 1, 2 * _wlength);
         if ( !pDist->IsNormalized() )
         {
-          cerr << "SampleUniformInstanceStart : distribution not normalized!!" << endl;
+          //cerr << "SampleUniformInstanceStart : distribution not normalized!!" << endl;
           break;
         }
       }        
@@ -1272,7 +1320,7 @@ SequenceComputation::SampleUniformInstanceStart(vector<int>& pAlignmentVector, i
   }
   else
   {
-    cerr << "-- Warning -- SequenceComputation::SampleUniformInstanceStart(): distribution is NULL." << endl;
+    //cerr << "-- Warning -- SequenceComputation::SampleUniformInstanceStart(): distribution is NULL." << endl;
   }
   
   return;
@@ -1328,7 +1376,7 @@ SequenceComputation::SelectBestInstanceStart(vector < int >&pAlignmentVector,
         pDist->ApplyMask(ndx - _wlength + 1, 2 * _wlength);
         if ( !pDist->IsNormalized() )
         {
-          cerr << "SelectBestInstanceStart : distribution not normalized!!" << endl;
+          //cerr << "SelectBestInstanceStart : distribution not normalized!!" << endl;
           break;
         }
       }        
@@ -1340,7 +1388,7 @@ SequenceComputation::SelectBestInstanceStart(vector < int >&pAlignmentVector,
   }
   else
   {
-    cerr << "-- Warning -- SequenceComputation::SelectBestInstanceStart(): distribution is NULL." << endl;
+    //cerr << "-- Warning -- SequenceComputation::SelectBestInstanceStart(): distribution is NULL." << endl;
   }
   return;
 }
@@ -1615,7 +1663,9 @@ SequenceComputation::SetMotifLength(int wLength)
     // update mask (last wLength - 1 positions set to zero);
     _pMask->UpdateMask(_length - _wlength + 1, _wlength, 0);
     _pRevMask->UpdateMask(_length - _wlength + 1, _wlength, 0);
-    for (int i = _length - _wlength +1; i < _length; i++)
+    int start = _length - _wlength +1;
+    if (start < 0) {start = 0;}
+    for (int i = start; i < _length; i++)
     {
       (*_pPspScore)[i] = 0;
       (*_pRevPspScore)[i] = 0;
@@ -1673,7 +1723,9 @@ SequenceComputation::LogLikelihoodScore(vector<int> * pAlign, strand_modes STRAN
 
 /******************************************************************************
   Description:  set the PSP score of all segments
-  Date:         2012/09/19
+                and update the number of instances prior distribution !! 
+	            and also compute the prior-NORM-factor, store in _pNormFactors
+  Date:         2013/03/10
   Author:       Marleen Claeys <mclaeys@qatar.net.qa>
   
 ******************************************************************************/
@@ -1683,25 +1735,91 @@ SequenceComputation::UpdatePspScores(ScoreVector * psp, strand_modes STRAND)
   // define some iterators
   vector < double >::iterator iter1;
   int L = psp->size();
-  if (L != _length) // should normally be ok (checked before)
+  if (L != _length + 1) // should normally be ok (checked before)
   {
-    cerr << "--Error--SeqComp::UpdatePspScores(): inconsistent lengths (" 
+    cerr << "--Error--SeqComp::UpdatePspScores(): inconsistent psp/seqlengths (" 
 		  << L << "," << _length << ")." << endl; 
     //return; // no return, it will result in an error to be fixed
   }
-  // update each prob (but not the last L-w values, these are 0.0
-  for (int i = 0; i < (_length-_wlength); i++)
+  // first update the prior on the NUMBER of instances in this sequence
+  // i.e. Pr(c=0) == PSP[0] and Pr(c=1) == 1-PSP[0]
+    // for c > 1 :recaculate proportional probabilities. 
+  // this means overwriting on the earlier entries of vector<Distribution*> * _priorDistrs; 
+  // so you can have different Number-priors for different sequences now !
+  // REPORT changes (compared to -p input) to the user
+  // if -p was a fixed input (eg f0_1), then there is NO update 
+  // -> this is the case if _priorDistrs == NULL => then do nothing
+  double prior0 = (*psp)[0];
+  double prior1 = 1- prior0;
+  vector<double> * distr = NULL;
+  double norm, sum;
+  if (_priorDistrs != NULL) 
   {
-    // plus strand
-    if (STRAND == both || STRAND == plus_strand)
+    cerr << "WARNING: overwrite prior distribution on NUMBER of instances for sequence [" 
+         << *_pSeqObj->GetID() << "]: "<< endl;
+    // update each distribution ( c= 1, ... c= M)
+    for (int c = 1; c < int(_priorDistrs->size()); c++)
     {
-      (*_pPspScore)[i] = (*psp)[i];
-    }
-    // minus strand // apply same probs on the reverse strand 
-    if (STRAND == both || STRAND == minus_strand)
-    {
-      (*_pRevPspScore)[_length-_wlength -i] = (*psp)[i];
+      distr = (*_priorDistrs)[c]->GetVector();
+      cerr << "[c=" << c << "]::Before(";
+      for(int cc = 0; cc < int(distr->size()); cc++)
+		   { cerr << (*distr)[cc] << " ";}
+      norm = (*distr)[0]  + (*distr)[1];
+      // overwrite prior0 and prior1
+      (*distr)[0] = prior0; (*distr)[1] = prior1;
+      // normalize and assign higher probs
+      sum = norm;
+      for (int cc = 2; cc < int(distr->size()); cc++)
+      { (*distr)[cc] /= norm; sum += (*distr)[cc];}
+      for (int cc = 0; cc < int(distr->size()); cc++)
+      { (*distr)[cc] /= sum;}
+      cerr << "; After(";
+      for (int cc = 0; cc < int(distr->size()); cc++)
+      { cerr << (*distr)[cc] << " ";}
+      cerr << endl;
     }
   }
+
+  // update each PSP prior segment score 
+  // and renormalize so the sum equals 1 
+  // plus strand
+  if (STRAND == both || STRAND == plus_strand)
+  { sum = 0;
+    for (int i = 0; i < _length; i++)
+    {
+      if (i > _length - _wlength) {(*_pPspScore)[i] = 0;}
+      else {(*_pPspScore)[i] = (*psp)[i+1];}
+      sum += (*_pPspScore)[i];
+    }
+    for (int i = 0; i < _length; i++)
+    { (*_pPspScore)[i] /= sum;}
+  }
+  // minus strand // apply same probs on the reverse strand 
+  if (STRAND == both || STRAND == minus_strand)
+  { sum = 0;
+    for (int i = 0; i < _length; i++)
+    {
+      if (i > _length - _wlength) {(*_pRevPspScore)[i] = 0;}
+      else {(*_pRevPspScore)[i] = (*psp)[L-i-1];}
+      sum += (*_pRevPspScore)[i];
+    }
+    for (int i = 0; i < _length; i++)
+    { (*_pRevPspScore)[i] /= sum;}
+  }
+
+  // now also compute/store the NORM-factor for c=1->M
+  // NORM-factor = sum of all possible combined site-priors of sets of sites
+  // (code based on utilities->ComputeNInstancesProbability - omit "C" in there
+  for(int c = 1; c < _maxInst+1; c++)
+  {
+    (*_plogNormFactors)[c] = INCLUSIVE::ComputeNInstancesProbability(
+        _pPspScore, c, _length, _wlength);
+  }
+  // (*_plogNormFactors)[1] should be zero by this computation (=log(1));
+	  cerr << "debug-followup-SequenceComputation::UpdatePSPScores:" << 
+		  "_plogNormFactors psp =(";
+	  for (int i = 0; i < _maxInst+1; i++)
+		  cerr << (*_plogNormFactors)[i] << " ";
+	  cerr << ")" << endl;
   return;
 }

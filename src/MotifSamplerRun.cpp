@@ -1383,11 +1383,11 @@ bool
         _pgffio->AddComment(cerrstr.str());
         cerrstr.flush(); // flush     
         // set pointer ready on next >line
-        fileIO->LoadPspData(0, 0, 1);
+        fileIO->LoadPspData(0, 1);
         delete id; id = NULL;
         continue;
       }
-      pPSP = fileIO->LoadPspData((pSeqComp->ParentSequence())->Length(), pSeqComp->GetMotifLength(), 0); 
+      pPSP = fileIO->LoadPspData((pSeqComp->ParentSequence())->Length(), 0); 
       if (pPSP == NULL)
       { // incorrect format
         error = "--Error-- MotifSamplerRun::UpdatePspScores: incorrect format in PSP probabilities of sequence >";
@@ -2175,7 +2175,7 @@ double
 void
 MotifSamplerRun::SetMotifLength(int wLength)
 {
-  // cerr << "DEBUG: MotifSamplerRun::SetMotifLength" << wLength << endl;
+  //cerr << "DEBUG: MotifSamplerRun::SetMotifLength" << wLength << endl;
   ostringstream cerrstr;
   if (wLength <= 0)
   {
@@ -2212,13 +2212,32 @@ MotifSamplerRun::SetMotifLength(int wLength)
   }
   
   // set motif length in individual sequences
+  string id = "";
   MapIterator si = _pComputationMap->begin();
   while (si != _pComputationMap->end())
   {
-    (*si).second->SetMotifLength(_w);
-    si++;
+    if ((*si).first->Length() < _w)
+    { id = *(*si).first->GetID();
+      // remove this sequence from dataset
+      _pComputationMap->erase(si); si++;
+      _nbrSequences--;
+      // also remove from _pSequenceList
+      SeqIterator i = _pSequenceList->begin();
+      for (; i != _pSequenceList->end(); i++)
+      { if ( *(*i)->GetID() == id)
+        { SequenceObject * pObj = *i;
+          _pSequenceList->erase(i);
+          // delete object
+          delete pObj; pObj = NULL;
+          break;
+        }
+      }
+    }
+    else { (*si).second->SetMotifLength(_w);}
+    si++; 
   }
-  // cerr << "DEBUG: MotifSamplerRun::SetMotifLength" << endl;
+
+  //cerr << "DEBUG: MotifSamplerRun::SetMotifLength" << endl;
   return;
 }
 
@@ -2230,6 +2249,7 @@ MotifSamplerRun::SetMotifLength(int wLength)
 void 
 MotifSamplerRun::LinkNbrInstInfo(int maxM, vector<Distribution*>* priorDistrs, bool sample)
 {
+//cerr << "debug--MotifSamplerRun::LinkNbrInstInfo - begin" << endl;
   // iterate through _pComputationMap
   MapIterator si = _pComputationMap->begin();
   while (si != _pComputationMap->end())

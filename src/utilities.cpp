@@ -795,6 +795,8 @@ namespace INCLUSIVE {
   
   Date:         2005/12/06
   Author:       Marleen Claeys
+  Date:         2013/03/11 : omit factor C -> add it else in design...
+  Author:       Marleen Claeys
   
 ******************************************************************************/
   double
@@ -819,10 +821,12 @@ namespace INCLUSIVE {
       iterPt2;
 
     // number of possible combinations
+    // 2013/03/11 : add C-factor to SeqComp::_pNormFactors  default 
+/*
     double C = log((double) lw);
     for (i = 2; i <= n; i++)
       C += log((double) (L - (n * W) + i)) - log((double) i);
-
+*/
     // define intermediate variables
     vector < double >*pt1 = new vector < double >(ll);
     iterPt1 = pt1->begin();
@@ -856,7 +860,8 @@ namespace INCLUSIVE {
     }
     else
     {
-      sum = log(sum) - C;
+      //sum = log(sum) - C;
+      sum = log(sum);
     }
 
     // clean up the variables

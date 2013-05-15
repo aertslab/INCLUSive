@@ -405,6 +405,24 @@ main(int argc, char *argv[])
     wronginput = true;
     //cleanup(); exit(-1);
   }
+	
+// for debug
+	/*
+	cerr << "debug -p - begin" << endl;
+for(int i = 0; i < (int)_pPriorDistrs->size(); i++)
+{
+  Distribution *pDis = (*_pPriorDistrs)[i];
+  if (pDis != NULL)
+  {
+	  cerr << "pDis[" << i << "]= (";
+    vector<double>* pVec = pDis->GetVector();
+    for(int j = 0; j < (int)pVec->size(); j++)
+		  cerr << (*pVec)[j] << " ";
+	  cerr << ")" << endl;
+  }
+}
+	cerr << "debug -p - end" << endl;
+*/
 //=========================================================
 
   if (wronginput)
@@ -519,6 +537,7 @@ main(int argc, char *argv[])
   // create a new MotifSampler object
   cerr << "Create MotifSampler run." << endl;
   MotifSamplerRun *pMainRunner = new MotifSamplerRun(fastaFile, bStrand, pGffIO);
+
   // check the number of sequences
   if (pMainRunner->NumberOfSequences() < 2)
   {
@@ -550,17 +569,24 @@ main(int argc, char *argv[])
     cleanup();
     exit(-1);
   }
+
   // set primary parameters of the algorithm
   pMainRunner->SetMotifLength(wLength);
+
   // pMainRunner->SetOneInstancePrior(priorValue);
-  pMainRunner->LinkNbrInstInfo(maxInstances, _pPriorDistrs, bSampling); // 
+  pMainRunner->LinkNbrInstInfo(maxInstances, _pPriorDistrs, bSampling); //
+
   //cerr << "debug-bSampling =  " << bSampling << endl;
   pMainRunner->SetOverlap(overlap);
+
   // pass trackfile to MotifSamplerRun
   pMainRunner->LinkFiles(pGffTrack);
+
   // set background model and compute background model scores
   pMainRunner->SetBackgroundModel(pBgModel);
+
   pMainRunner->UpdateBackgroundScores();
+
   // set the PSP information
   if (bPSP) 
   { if (!(pMainRunner->UpdatePspScores(pspFile, _pPSPimpact)))
@@ -969,6 +995,9 @@ version()
   cout << "- (3.1.5) 24/10/2011 : initial iterations = 19 instead of 20." << endl; 
   cout << "- (3.1.5) 14/03/2012 : output error messages to user file." << endl;
   cout << "- (3.2.0) 17/09/2012 : (test-phase) implement Position Specific Prior (-q/-Q)." << endl;
+  cout << "- (3.2.1) 04/02/2013 : no changes for MotifSampler." << endl;
+  cout << "- (3.2.1) 12/03/2013 : checkup/revision PSP code." << endl;
+  cout << "- (3.2.1) 15/05/2013 : debug segm fault for too short sequences." << endl;
   cout << endl;
 } 
 

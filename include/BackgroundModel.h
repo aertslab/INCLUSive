@@ -28,6 +28,8 @@ class BackgroundModel {
   double * GetOligoFrequencyMatrix(){return _oligoFrequencyMatrix;};
   double GetSnfValueAt(int i);
   double GetTransitionMatrixValueAt(int i, int j);
+  double GetMaxTransitionMatrixValueAt(int j);
+  double GetMinTransitionMatrixValueAt(int j);
   double GetOligoFrequencyValueAt(int i);
 
   // adaptors

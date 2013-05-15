@@ -1,6 +1,10 @@
 // 27 march 2012 : adjust cerr reporting => cerrstr
 // 28 sept 2012 : error (and exit) for incorrect PWM format reading
 
+// 03 feb 2013 : compute minX/maxX against higher order bgmodel instead of SNF !
+// --> then rescaled score will never be higher than 1 which may now be the case.
+
+
 #include "utilities.h"
 #include "PWMIO.h"
 #include "PWM.h"
@@ -206,20 +210,6 @@ main(int argc, char *argv[])
     // exit
     cleanup(); exit(-1);  
   }
-
-  // extract pseudo counts
-  double value = 0;
-  double minSnf = 1;
-  double maxSnf = 0;
-  for (j = 0; j < 4; j++)
-  {
-    value = pBgModel->GetSnfValueAt(j);
-    if (minSnf > value)
-      minSnf = value;
-    if (maxSnf < value)
-      maxSnf = value;
-  }
-
   // read list of matrix ID's
   list < string > matrixIdList;
   list < string >::iterator matListIter = matrixIdList.begin();
@@ -236,7 +226,6 @@ main(int argc, char *argv[])
   }
 
   // open file for output writing if necessarry
-
   if (bOut)
   {
     pGFFStream = new GFFWriter(outputFile);
@@ -247,7 +236,7 @@ main(int argc, char *argv[])
   {
     pGFFStream = new GFFWriter();
   }
-	
+
   // some variables to store matrix data
   PWM *myMatrix;
   list < PWM * >matrixList;
@@ -256,6 +245,7 @@ main(int argc, char *argv[])
   list < PWM * >::iterator matIter;
   list < double >::iterator minXListIter;
   list < double >::iterator maxXListIter;
+  double value = 0;
   double minElem = 1;
   double maxElem = 0;
   double wx = 0;
@@ -273,8 +263,8 @@ main(int argc, char *argv[])
       pGFFStream->AddComment(cerrstr.str());
       cerrstr.flush(); // flush 
       wronginput = true;
-	  break;
-	}
+      break;
+    }
     if (myMatrix == NULL){break;} // processing not-matrix lines... end of file
     //
     bool bMatching = false;
@@ -303,32 +293,27 @@ main(int argc, char *argv[])
       maxX = 0;
       for (i = 0; i < myMatrix->Length(); i++)
       {
-        minSnf = 1;
         minElem = 1;
-        maxSnf = 0;
         maxElem = 0;
+
         for (j = 0; j < 4; j++)
         {
-          value = myMatrix->GetValueAt(i, j);
-          if (value < minElem){
-            minElem = value;
-            maxSnf = pBgModel->GetSnfValueAt(j);
-          }
-          if (maxElem < value){
-            maxElem = value;
-            minSnf = pBgModel->GetSnfValueAt(j);
-          }
+          //value = myMatrix->GetValueAt(i, j) / pBgModel->GetSnfValueAt(j);
+          value = myMatrix->GetValueAt(i, j) / pBgModel->GetMaxTransitionMatrixValueAt(j);
+          if (value < minElem){ minElem = value;}
+          value = myMatrix->GetValueAt(i, j) / pBgModel->GetMinTransitionMatrixValueAt(j);
+          if (value > maxElem){ maxElem = value;}
         }
-        minX += log(minElem) - log(maxSnf);
-        maxX += log(maxElem) - log(minSnf);
+        minX += log(minElem);
+        maxX += log(maxElem);
       }
       // minX -= myMatrix->Length() * log(maxSnf);
       // maxX -= myMatrix->Length() * log(minSnf);
-		/*
-      cerr << "+ " << *(myMatrix->
+
+      /*cerr << "+ " << *(myMatrix->
                         GetID()) << ": min Wx = " << minX << " |max Wx = "
         << maxX << endl;
-						*/
+      */
       count++;
       matrixList.push_back(myMatrix);
       minXList.push_back(minX);
@@ -340,7 +325,8 @@ main(int argc, char *argv[])
   cerr << count << " matrices loaded." << endl;
 
   if (!wronginput && count == 0) // count == 0
-  { cerrstr << "--ERROR: MotifLocator: No usable input matrix found." << endl;
+  { cerr << "--ERROR: MotifLocator: No usable input matrix found." << endl;
+    cerrstr << "--ERROR: MotifLocator: No usable input matrix found." << endl;
     pGFFStream->AddComment(cerrstr.str());
     cerrstr.flush(); // flush
     wronginput = true;   
@@ -354,6 +340,7 @@ main(int argc, char *argv[])
     cerr << "MotifLocator : Loading sequences... " << endl;
     if (fileIO == NULL || !fileIO->IsOpen() || !fileIO->HasNext())
     {
+      cerr << "--ERROR: MotifLocator: Unable to read sequences from fasta file." << endl;
       cerrstr << "--ERROR: MotifLocator: Unable to read sequences from fasta file." << endl;
       pGFFStream->AddComment(cerrstr.str());
       cerrstr.flush(); // flush 
@@ -428,11 +415,12 @@ main(int argc, char *argv[])
       {
 
         // motif length is larger than sequence length move to next motif
-        /*
+        
 		  cerr << "Warning: Sequence too short: " << *(pSeqObj->
                                                      GetID()) << endl;
-		*/
         matIter++;
+        minXListIter++;
+        maxXListIter++;
         continue;
       }
 
@@ -456,7 +444,6 @@ main(int argc, char *argv[])
       {
         wx =
           ((log(pSeqComp->GetWxAt(j, plus_strand))) - minX) / (maxX - minX);
-
         // and select motifs with score higher than threshold
         if (wx >= threshold)
         {
@@ -496,7 +483,6 @@ main(int argc, char *argv[])
           // re-normalize wx
           wx =
             (log(pSeqComp->GetWxAt(j,minus_strand)) - minX) / (maxX - minX);
-
           // and select motifs with score higher than threshold
           if (wx >= threshold)
           {
@@ -527,12 +513,14 @@ main(int argc, char *argv[])
           }
         }
       }
-      /*
+      if (nbr > 0)
+		{
       cerr << counter << " |" << *(pSeqObj->
                                    GetID()) << " + " << *((*matIter)->
                                                           GetID()) <<
         "   -> instances:  " << nbr << endl;
-      */
+		}
+      
       //move on to the next element
       matIter++;
       maxXListIter++;
@@ -613,6 +601,7 @@ version()
   cout << "- (3.1.5) 07/04/11 : minor revisions in output formatting" << endl;
   cout << "- (3.1.5) 14/03/12 : output error messages to user file." << endl;
   cout << "- (3.2.0) 28/09/12 : exit on PWM-reading error." << endl;
+  cout << "- (3.2.1) 04/02/13 : scaling factors against higher-order bg freqs." << endl;
   cout << "- end." << endl;
   cout << endl;
 } 

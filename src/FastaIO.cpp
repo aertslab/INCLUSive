@@ -132,7 +132,7 @@ FastaIO::NextSequence()
 
     string *pDescStr = new string(_pLine);
     
-    // cerr << "DEBUG: " << *pDescStr;
+	  //cerr << "DEBUG:FastaIO::NextSequence:: " << *pDescStr;
 
     while (!_ifs.eof())
     {
@@ -257,19 +257,19 @@ FastaIO::ReadSeqID()
   return readid;
 }
 /******************************************************************************
-  Description:  read all the probs (L in total) available in _pLine
+  Description:  read all the probs (L+1 in total) available in _pLine
                 the values are separated by a space
-                the last L-w values must be zero
+                the last L-w values must NOT NECESSARILY be zero
                 and put pointer on the next line (>)
-  Author_Date:  MC_2012/09/19
+  Author_Date:  MC_2013/03/05
 ******************************************************************************/
 ScoreVector *
-FastaIO::LoadPspData(int L, int w, bool skip)
+FastaIO::LoadPspData(int seqL, bool skip)
 {
   ScoreVector * pData = NULL;
 if (!skip) // else skip processing this line and put ready on next >line
 {
-  // _pLine format should be e.g. 0.4 0.6 0.8 ... 0.0 0.0 (or kommas or tabs)
+  // _pLine format should be e.g. 0.4 0.6 0.8 ... 0.0 0.0 
   string::size_type pos;
   pos = _pLine.find_first_not_of(" \t0.123456789\n\r\f");
   if ( pos != string::npos )
@@ -292,25 +292,27 @@ if (!skip) // else skip processing this line and put ready on next >line
     pData->push_back(prob);
     i++;
   }
-  // check if total pData equals L
-  if ( i != L)
+  // check if total pData equals L+1
+  if ( i != seqL+1)
   {
-    if (i < L)
-      _pPSPerror = new string("--Error2--FastaIO::LoadPspData: too few psp entries described (must equal length of FASTA sequence).");
+    if (i < seqL+1)
+      _pPSPerror = new string("--Error2--FastaIO::LoadPspData: too few psp entries described (must equal length+1 of FASTA sequence).");
     else
-      _pPSPerror = new string("--Error2--FastaIO::LoadPspData: too much psp entries described (must equal length of FASTA sequence)."); 
+      _pPSPerror = new string("--Error2--FastaIO::LoadPspData: too much psp entries described (must equal length+1 of FASTA sequence)."); 
     delete pData; pData = NULL;
     return NULL;
   }
-  // check if last L-w entries are 0.0
-  for (i = L-w+1; i < L; i++)
+  // check if all entries sum up to 1
+  double sum = 0;
+  for (int j = 0; j < i; i++)
   {
-    if ((*pData)[i] != 0)
-    {
-      _pPSPerror = new string("--Error3--FastaIO::LoadPspData: last (L-w) psp entries must be 0.");
-      delete pData; pData = NULL;
-      return NULL;
-    }
+    sum += (*pData)[j];
+  }
+  if ( sum > 1.0000000000000000001 || sum < 0.999999999999999999)
+  {
+    _pPSPerror = new string("--Error3--FastaIO::LoadPspData: psp entries do not sum up to 1.");
+    delete pData; pData = NULL;
+    return NULL;
   }
 }
 
