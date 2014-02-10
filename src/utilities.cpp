@@ -791,16 +791,16 @@ namespace INCLUSIVE {
   Arguments:    ScoreVector * pExpWx, int n, int L, int W
   
   Description:  Compute the probability of finding n instances 
-                given the scores stored in pExpWx	
+                given the scores stored in pExpWx; return as a logaritme
   
   Date:         2005/12/06
   Author:       Marleen Claeys
-  Date:         2013/03/11 : omit factor C -> add it else in design...
+  Date:         2013/03/11 : omit factor C -> add in SeqComp::UpdateCopyProbability
   Author:       Marleen Claeys
   
 ******************************************************************************/
   double
-    ComputeNInstancesProbability(ScoreVector * pExpWx, int n, int L, int W)
+    ComputeNInstancesProbability(ScoreVector * pExpWx,int n, int L, int W)
   {
 
     // variables
@@ -821,7 +821,7 @@ namespace INCLUSIVE {
       iterPt2;
 
     // number of possible combinations
-    // 2013/03/11 : add C-factor to SeqComp::_pNormFactors  default 
+    // 2013/03/11 : bring this constant outside to SeqComp::UpdateCopyProbability 
 /*
     double C = log((double) lw);
     for (i = 2; i <= n; i++)

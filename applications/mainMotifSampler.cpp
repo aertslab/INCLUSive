@@ -1,8 +1,3 @@
-// 23 october 2009 - 3.1.5
-// include extensions on # instances/sequence (see 3.1.3)
-// report extra output to tracking file (-t)
-// 20 march 2012 : adjust cerr reporting => cerrstr
-// 19 Sept 2012 : implement Position Specific Prior (3.2.0), option -q/-Q 
 
 #include "inclusive.h"
 #include "utilities.h"
@@ -25,7 +20,7 @@
 #include <climits>//
 #include <ctime>//
 
-#define OPTIONS "f:b:p:q:Q:m:o:t:w:n:s:x:r:M:S:vh?"
+#define OPTIONS "f:b:p:q:Q:m:o:w:n:s:x:r:M:S:vh?"
 
 
 // function prototypes
@@ -39,7 +34,6 @@ string *fastaFile = NULL,
   *pspFile = NULL,
   *outputFile = NULL,
   *matrixFile = NULL,
-  *trackFile = NULL,
   *priorInput = NULL; // prior input as string
 
 
@@ -50,7 +44,6 @@ main(int argc, char *argv[])
   RandomNumber::InitRandomNumber();
   bool bFasta = false,
     bBG = false,
-	bPSP = false,
     bOut = false,
     bMatrix = false;
     //bMax = false;
@@ -58,7 +51,7 @@ main(int argc, char *argv[])
   char c;
   // double priorValue = 0.5;
   string _pDefault = "0.9_0.25"; // default prior input
-  string _pPSPimpact = "n"; // apply prior in update step
+  bool _bPSP_s = 0; // default only PSP for updating step
   strand_modes bStrand = both;
   int wLength = 8,
     overlap = 1, // 
@@ -71,7 +64,8 @@ main(int argc, char *argv[])
   char cid[64];
 
   // 22 march 2012
-  ostringstream cerrstr; // to output all error messages (instead of cerr)
+  // to output all error messages (instead of cerr)
+  ostringstream cerrstr; 
   bool wronginput = false;
   
   if (optopt == 0)
@@ -98,31 +92,14 @@ main(int argc, char *argv[])
       if ( atoi(optarg) == 0 )
         bStrand = plus_strand;
       break;
-    /*case 'p':
-      priorValue = (double) atof(optarg);
-      if (priorValue <= 0 || priorValue >= 1)
-      {
-        cerr << "ERROR: prior should be between 0 and 1" << endl;
-        exit(-1);
-      }
-      break;
-	  */
     case 'p':
       priorInput = new string(optarg);
       break;
     case 'q':
       pspFile = new string(optarg);
-      bPSP = true;
       break;
-    case 'Q': // set PSP correction impact
-      _pPSPimpact = string(optarg);
-      if ( _pPSPimpact != "s" && _pPSPimpact != "b" && _pPSPimpact != "u" && _pPSPimpact != "n")
-      {
-        cerr << "ERROR: -Q input should be b|u|s|n." << endl;
-        cerrstr << "ERROR: -Q input should be b|u|s|n." << endl;
-        wronginput = true;
-        //cleanup(); exit(-1);
-      }
+    case 'Q': // for test purposes
+      _bPSP_s = (bool)atoi(optarg);
       break;
     case 'w':
       wLength = atoi(optarg);
@@ -152,9 +129,6 @@ main(int argc, char *argv[])
     case 'm':
       matrixFile = new string(optarg);
       bMatrix = true;
-      break;
-    case 't':
-      trackFile = new string(optarg);
       break;
     case 'r':
       runs = atoi(optarg);
@@ -223,221 +197,6 @@ main(int argc, char *argv[])
     // exit
     cleanup(); exit(-1); 
   }
-//=========================================================
-  // process input from -p (mainly based on 5.0.4 / partially 3.1.3)
-  if (priorInput == NULL){ priorInput = new string(_pDefault);}
-  // local vector to store distributions 
-  vector<Distribution *> *_pPriorDistrs = new vector<Distribution *>; 
-  // (case f) make the fixed distribution---------------->(vector[0])
-  // else make prior distributions for n = 1->M(max)----->(vector[1->M])
-  ScoreVector * pProbs = NULL;
-  string::size_type pos;
-  if ((*priorInput)[0] == 'f')
-  {
-    priorInput->erase(0,1); // erase 'f'
-    pProbs = new ScoreVector;
-    double p;
-    while (!priorInput->empty() && (int)pProbs->size() < maxInstances+1)
-    { 
-      pos = priorInput->find_first_not_of("0.123456789");
-      istringstream istr(priorInput->substr(0,pos)); // convert to double
-      istr >> p;
-      if (p < 0 || p > 1) // invalid prob
-        break;
-      priorInput->erase(0,pos);
-      while ( priorInput->find_first_of("_ \t") == 0) priorInput->erase(0,1); 
-      pProbs->push_back(p);
-    }
-    // cut low values at the end
-    for(int i = (int)pProbs->size()-1; i >= 0; i--) 
-    { if ( (*pProbs)[i] <= 0.001) pProbs->pop_back();
-      else break;
-    }
-    // create fixed distribution
-    maxInstances = (int)pProbs->size() - 1; // adjust -M if so
-    Distribution * dist = new Distribution(pProbs, 0, (int)pProbs->size());
-    _pPriorDistrs->push_back(dist); // may be NULL - see end check
-  }
-  else 
-  { // store NULL on vector[0]
-    _pPriorDistrs->push_back(NULL);
-    // create next distributions
-    c = (*priorInput)[0]; // 0,u,b,e
-    switch (c)
-    {
-      case '0' :
-      { // read prior p
-        double p = 0.5; // prior SEE DEFAULT IN _pDefault
-        pos = priorInput->find_first_not_of("0.123456789");
-        istringstream istr(priorInput->substr(0,pos)); // convert to double
-        istr >> p;
-        if (p <= 0 || p >= 1) // invalid prior
-          break;
-        priorInput->erase(0,pos);
-        while ( priorInput->find_first_of("_ \t") == 0) priorInput->erase(0,1); 
-        // read kappa 
-        double kappa = 0.25; // kappa SEE DEFAULT IN _pDefault
-        if ( !priorInput->empty()) 
-        { 
-          pos = priorInput->find_first_not_of("0.123456789");
-          istringstream istr(priorInput->substr(0,pos)); // convert to double
-          istr >> kappa;
-          if (kappa < 0 || kappa > 1) // invalid kappa
-            break;
-          priorInput->erase(0,pos);
-          while ( priorInput->find_first_of("_ \t") == 0) priorInput->erase(0,1); 
-        }
-        if (!priorInput->empty()) 
-          break; // invalid values or format < >_< >
-        // construct distributions
-        pProbs = new ScoreVector;
-        double value, sum(1);
-        pProbs->push_back(1 - p); // Pr(0)
-        pProbs->push_back(p); // Pr(1)
-        for(int i = 2; i <= maxInstances; i++) 
-        { value = kappa * (*pProbs)[i-1];
-          sum += value;
-          if ( value/sum <= 0.001) break; // untill max or <0.001
-          pProbs->push_back(value);
-        }
-        maxInstances = (int)pProbs->size() -1; // adjust -M if so
-        for (int n = 1; n <= maxInstances; n++)
-          _pPriorDistrs->push_back(new Distribution(pProbs, 0, n+1));
-        break;
-      }
-      case 'u' : 
-      {
-        priorInput->erase(0,1); // erase 'u'
-        if ( !priorInput->empty()) break;
-        // create and store the distributions
-        pProbs = new ScoreVector; pProbs->push_back(1);
-        for (int n = 1; n <= maxInstances; n++) 
-        { pProbs->push_back(1);
-          _pPriorDistrs->push_back(new Distribution(pProbs, 0, n+1));
-        }
-        break;
-      }
-      case 'b' : 
-      {
-        priorInput->erase(0,1); // erase 'b'
-        // read input
-        double p;
-        pos = priorInput->find_first_not_of("0.123456789");
-        istringstream istr(priorInput->substr(0,pos)); // convert to double
-        istr >> p;
-        if (p <= 0 || p >= 1) // invalid prior
-          break;
-        priorInput->erase(0,pos);
-        if ( !priorInput->empty()) break;
-        // create and store the distributions
-        for (int n = 1; n <= maxInstances; n++)
-        { pProbs = new ScoreVector; 
-          for(int i = 0; i <= n; i++)
-            pProbs->push_back(pow(p,i)*pow((1-p),(n-i))*
-                   INCLUSIVE::fac(n)/INCLUSIVE::fac(n-i)/INCLUSIVE::fac(i));
-          for(int i = n; i >= 0; i--) // cut low values at the end
-          { if ( (*pProbs)[i] <= 0.001) pProbs->pop_back();
-            else break;
-          }
-          if ( (int)pProbs->size() == n + 1 )
-          { _pPriorDistrs->push_back(new Distribution(pProbs, 0, n+1));
-            delete pProbs; pProbs = NULL; 
-          }
-          else 
-          { maxInstances = (int)pProbs->size()-1; // adjust -M if so
-            break;
-          }
-        }
-        break;
-      }
-      case 'e' : 
-      {
-        priorInput->erase(0,1); // erase 'e'
-        pProbs = new ScoreVector;
-        double p;
-        while (!priorInput->empty() && (int)pProbs->size() < maxInstances+1)
-        { 
-          pos = priorInput->find_first_not_of("0.123456789");
-          istringstream istr(priorInput->substr(0,pos)); // convert to double
-          istr >> p;
-          if (p < 0 || p >= 1) // invalid prob
-            break;
-          priorInput->erase(0,pos);
-          while ( priorInput->find_first_of("_ \t") == 0) priorInput->erase(0,1); 
-          pProbs->push_back(p);
-        }
-        // cut low values at the end
-        for(int i = (int)pProbs->size()-1; i >= 0; i--) 
-        { if ( (*pProbs)[i] <= 0.001) { pProbs->pop_back();}
-          else break;
-        }
-        // create distributions
-        maxInstances = (int)pProbs->size() - 1; // adjust -M if so
-        bool notNull = false;
-        for (int n = 1; n <= maxInstances; n++)
-        { 
-          Distribution * dist = new Distribution(pProbs, 0, n+1);
-          if (dist != NULL) notNull = true; // some may be NULL when all-0-subset
-          _pPriorDistrs->push_back(dist); 
-        }
-        if (!notNull) // all distrs are NULL
-        { cerr << "ERROR too much zero values in -p e<values> input" << endl;
-          for( int i = (int)_pPriorDistrs->size()-1; i >= 1; i--)
-          {
-            if ((*_pPriorDistrs)[i] != NULL) delete (*_pPriorDistrs)[i]; 
-            (*_pPriorDistrs)[i] = NULL;
-            _pPriorDistrs->pop_back();
-          }
-        }
-        break;
-      }
-    }
-  }
-  // cleanup
-  if (pProbs != NULL) delete pProbs; pProbs = NULL;
-  // check on correct input
-  if (_pPriorDistrs->size() < 2  && (*_pPriorDistrs)[0] == NULL)
-  {
-    cerr << "ERROR: incorrect format or invalid values for -p. Check guidelines." << endl;
-    delete _pPriorDistrs; _pPriorDistrs = NULL;
-    instructions();
-    cerrstr << "--ERROR: incorrect format or invalid values for -p. Check guidelines." << endl;
-    wronginput = true;
-    //cleanup(); exit(-1);
-  }
-	
-// for debug
-	/*
-	cerr << "debug -p - begin" << endl;
-for(int i = 0; i < (int)_pPriorDistrs->size(); i++)
-{
-  Distribution *pDis = (*_pPriorDistrs)[i];
-  if (pDis != NULL)
-  {
-	  cerr << "pDis[" << i << "]= (";
-    vector<double>* pVec = pDis->GetVector();
-    for(int j = 0; j < (int)pVec->size(); j++)
-		  cerr << (*pVec)[j] << " ";
-	  cerr << ")" << endl;
-  }
-}
-	cerr << "debug -p - end" << endl;
-*/
-//=========================================================
-
-  if (wronginput)
-  { 
-    // report to file if file is available
-    if (bOut) 
-    { cerrstr << "#Check our MotifSuite webpage for correct input format. Or contact us, we will be happy to help." << endl;
-      pGffIO = new GFFWriter(outputFile); 
-      pGffIO->AddComment(cerrstr.str());
-      cerrstr.flush(); // flush  
-      if (pGffIO != NULL) delete pGffIO; pGffIO = NULL;
-    }
-    // exit
-    cleanup(); exit(-1);  
-  }
 
   cerr << "MotifSampler: Load the background model." << endl;
   // load the background model
@@ -500,33 +259,6 @@ for(int i = 0; i < (int)_pPriorDistrs->size(); i++)
   {
     pGffIO = new GFFWriter();
   }
-  GFFWriter *pGffTrack = NULL;
-  if ( trackFile != NULL) pGffTrack = new GFFWriter(trackFile);
-
-  // reset some settings depending on the input
-  string warning = "";
-  if (_pPSPimpact == "n")
-  {  if (bPSP == true)
-       // give warning that PSP file will not be used
-       warning = "WARNING: the supplied PSP file (-q) will not be used as -Q was set to 'n' (=apply no PSP correction).\n";
-     bPSP = false; // reset
-  }
-  else 
-  { if (bPSP == false)
-      // give warning that no PSP will be used 
-      // (i.e. default neutral PSP, all probs are set to '1')
-      warning = "WARNING: no PSP correction (yet -Q differs from 'n') will be applied as no PSP file (-q) is provided.\n";
-  }
-  if (warning != "")
-  {
-    cerr << warning;
-    if (bOut)
-    {
-      cerrstr << warning;
-      pGffIO->AddComment(cerrstr.str());
-      cerrstr.flush(); // flush
-    }
-  }
 
   int errorSampling = 0;
   int errorMasking = 0;
@@ -555,16 +287,6 @@ for(int i = 0; i < (int)_pPriorDistrs->size(); i++)
     // cleanup local variables
     delete pGffIO; pGffIO = NULL;
     if (bMatrix) delete pwmFile; pwmFile = NULL;
-    if ( trackFile != NULL) delete trackFile; trackFile = NULL;
-    if (_pPriorDistrs != NULL)
-    { // cleanup distributions
-      for(int i = 0; i < (int)_pPriorDistrs->size(); i++)
-      { if ( (*_pPriorDistrs)[i] != NULL)
-          delete (*_pPriorDistrs)[i];
-      }
-      delete _pPriorDistrs;
-    }
-    _pPriorDistrs = NULL;
     delete pMainRunner;
     cleanup();
     exit(-1);
@@ -572,50 +294,34 @@ for(int i = 0; i < (int)_pPriorDistrs->size(); i++)
 
   // set primary parameters of the algorithm
   pMainRunner->SetMotifLength(wLength);
-
-  // pMainRunner->SetOneInstancePrior(priorValue);
-  pMainRunner->LinkNbrInstInfo(maxInstances, _pPriorDistrs, bSampling); //
-
-  //cerr << "debug-bSampling =  " << bSampling << endl;
   pMainRunner->SetOverlap(overlap);
-
-  // pass trackfile to MotifSamplerRun
-  pMainRunner->LinkFiles(pGffTrack);
 
   // set background model and compute background model scores
   pMainRunner->SetBackgroundModel(pBgModel);
-
   pMainRunner->UpdateBackgroundScores();
 
-  // set the PSP information
-  if (bPSP) 
-  { if (!(pMainRunner->UpdatePspScores(pspFile, _pPSPimpact)))
-    { // exit as incorrect PSP input
-      cerr << "--ERROR: incorrect processing of PSP information."<< endl;
-      if (bOut)
-      {  
-        cerrstr << "--ERROR: incorrect processing of PSP information."<< endl;
-        cerrstr << "#Check our MotifSuite webpage for correct input format. Or contact us, we will be happy to help." << endl;
-        pGffIO->AddComment(cerrstr.str());
-        cerrstr.flush(); // flush  
-      }
-      // cleanup local variables
-      delete pGffIO; pGffIO = NULL;
-      if (bMatrix) delete pwmFile; pwmFile = NULL;
-      if ( trackFile != NULL) delete trackFile; trackFile = NULL;
-      if (_pPriorDistrs != NULL)
-      { // cleanup distributions
-        for(int i = 0; i < (int)_pPriorDistrs->size(); i++)
-        { if ( (*_pPriorDistrs)[i] != NULL)
-            delete (*_pPriorDistrs)[i];
-        }
-        delete _pPriorDistrs;
-      }
-      _pPriorDistrs = NULL;
-      delete pMainRunner;
-      cleanup();
-      exit(-1);
+  // pMainRunner->SetOneInstancePrior(priorValue);
+  string warning = ""; 
+  if (priorInput == NULL)  { priorInput = new string(_pDefault);}
+  if (!pMainRunner->LoadNbrInstInfo(maxInstances, priorInput, bSampling))
+  { warning = "--ERROR: incorrect processing of -p (#inst/seq) information.";}
+  else if (pspFile != NULL && !pMainRunner->LoadPspScores(pspFile, _bPSP_s))
+  { warning = "--ERROR: incorrect processing of -q (PSP) information.";}
+  if (warning != "")
+  {  
+    cerr << warning << endl;
+    if (bOut)
+    {  
+      cerrstr << warning << endl;
+      cerrstr << "#Check our MotifSuite webpage for correct input format. Or contact us, we will be happy to help." << endl;
+      pGffIO->AddComment(cerrstr.str());
+      cerrstr.flush(); // flush  
     }
+    // cleanup local variables
+    delete pGffIO; pGffIO = NULL;
+    if (bMatrix) delete pwmFile; pwmFile = NULL;
+    delete pMainRunner;
+    cleanup();  exit(-1);
   }
 
   // 22 juli 2011
@@ -646,40 +352,18 @@ for(int i = 0; i < (int)_pPriorDistrs->size(); i++)
       // core motif sampler iterations
       //cerr << endl;
       //cerr << "Starting core sampling steps" << endl;
-      //if (!bMax)
-      //{
-
-        pMainRunner->CoreSamplingStep(70, 15, 3);
-
-      //}
-      //else
-      //{
-        //pMainRunner->CoreMaxSizeSamplingStep(maxInstances, 70, 15, 3);
-      //}
+      pMainRunner->CoreSamplingStep(70, 15, 3);
       if (pMainRunner->NumberOfInstances() <= 1
           && pMainRunner->NumberOfSequencesWithInstances() <= 1)
       {
         cerr << "--Warning: 0 or 1 instance found => aborting iteration." << endl;
-        /*if (bOut)
-        {
-          cerrstr << "--Warning: 0 or 1 instance found => aborting iteration." << endl;
-          pGffIO->AddComment(cerrstr.str());
-          cerrstr.flush(); // flush
-        } */
         break;
       }
 
       // 10 iterations in the convergence step
       //cerr << endl;
       //cerr << "Starting convergence step" << endl;
-      //if (!bMax)
-      //{
-        pMainRunner->ConvergenceStep(10);
-      //}
-      //else
-      //{
-       // pMainRunner->MaxSizeConvergenceStep(maxInstances, 10);
-      //}
+      pMainRunner->ConvergenceStep(10);
       if (!(pMainRunner->NumberOfInstances() > 1
           && pMainRunner->NumberOfSequencesWithInstances() > 1))
       {
@@ -917,19 +601,6 @@ delete pSummary; pSummary = NULL;
   if (pGffIO != NULL)
     delete pGffIO;
   pGffIO = NULL;
-  if (pGffTrack != NULL)
-    delete pGffTrack;
-  pGffTrack = NULL;
-  // cleanup _pPriorDistrs vector
-  if (_pPriorDistrs != NULL)
-  { // cleanup distributions
-    for(int i = 0; i < (int)_pPriorDistrs->size(); i++)
-    { if ( (*_pPriorDistrs)[i] != NULL)
-        delete (*_pPriorDistrs)[i];
-	}
-    delete _pPriorDistrs;
-  }
-  _pPriorDistrs = NULL;
 
   // delete motifID;
   delete pSource;
@@ -953,14 +624,13 @@ instructions()
   cout << " Output Arguments" << endl;
   cout << "  -o <outFile>        Output file to write putative motifs in instances format (default stdout)." << endl;
   cout << "  -m <matrixFile>     Output file to write putative motifs in pwm format (default not used)." << endl;
-  //cout << "  -t <trackFile>      Output file to track sampled positions (default not used)." << endl;
   cout << endl;
   cout << " Optional Arguments" << endl;
   cout << "  -s <0|1>            Select strand (default both)." << endl;
   cout << "                      0 is only input sequences, 1 includes reverse complement."<< endl;
   cout << "  -p <(u|b|e|f)values> Specifies the prior distribution on number of instances per sequence (default 0.9_0.25)."<< endl;
   cout << "  -q <pspFile>        File containing Position Specific Prior information."<< endl;
-  cout << "  -Q <u|s|b|n>        Apply Position Specific Prior correction in (u)updating, (s)sampling, (b)both or (n)none steps.\n";
+  cout << "  -Q <0|1>            To apply psp-correction in sampling step (1=yes) (default 0).\n";
   cout << "  -M <value>          Sets the maximal number of instances per sequence (default 2)." << endl;
   cout << "  -n <value>          Sets number of different motifs to search for (default 1)."<< endl;
   cout << "  -w <value>          Sets the motif width (default 8)." << endl;
@@ -989,7 +659,6 @@ version()
   cout << "- (3.1.2) 02/01/2008 : debug : MotifSamplerRun/"
        << "UpdateMasksFromInstanceMape()." << endl;
   cout << "- (3.1.5) 23/10/2009 : upgrade option -p (prior) and implement -S (sampling)." << endl;
-//<< "    -t : extra output to trackfile." << endl;
   cout << "- (3.1.5) 07/04/2011 : minor revisions in output formatting" << endl;
   //cout << " - (3.1.5) 22/07/2011 : again very minor revisions in output formatting" << endl;
   cout << "- (3.1.5) 24/10/2011 : initial iterations = 19 instead of 20." << endl; 
@@ -997,9 +666,12 @@ version()
   cout << "- (3.2.0) 17/09/2012 : (test-phase) implement Position Specific Prior (-q/-Q)." << endl;
   cout << "- (3.2.1) 04/02/2013 : no changes for MotifSampler." << endl;
   cout << "- (3.2.1) 12/03/2013 : checkup/revision PSP code." << endl;
-  cout << "- (3.2.1) 15/05/2013 : debug segm fault for too short sequences." << endl;
-  cout << endl;
+  cout << "- (3.2.1) 14/05/2013 : debug segm fault for too short sequences." << endl;
+  cout << "- (3.2.2) 16/01/2014 : lean PSP implementation." << endl;
+  cout << "- (3.2.2) 30/01/2014 : document -Q to be boolean." << endl;
+	cout << endl;
 } 
+
 
 
 void
@@ -1020,9 +692,6 @@ cleanup()
   if (outputFile != NULL)
     delete outputFile;
   outputFile = NULL;
-  if (trackFile != NULL)
-    delete trackFile;
-  trackFile = NULL;
   if (priorInput != NULL)
     delete priorInput;
   priorInput = NULL;

@@ -20,8 +20,6 @@
 ******************************************************************************/
 FastaIO::FastaIO(string * fileName)
 {
-  _pPSPerror = NULL;
-	
   // open file for reading
   _ifs.open(fileName->c_str(), ios::in);
 
@@ -80,10 +78,6 @@ FastaIO::~FastaIO()
   if (_ifs.good())
     _ifs.close();
 
-  if (_pPSPerror != NULL)
-    delete _pPSPerror;
-  _pPSPerror = NULL;
-	
   return;
 }
 
@@ -257,14 +251,15 @@ FastaIO::ReadSeqID()
   return readid;
 }
 /******************************************************************************
-  Description:  read all the probs (L+1 in total) available in _pLine
+  Description:  read all the probs (L, or 2L) available in _pLine
                 the values are separated by a space
-                the last L-w values must NOT NECESSARILY be zero
+                ! the last L-w values are (if not yet so) overwritten to zero !
                 and put pointer on the next line (>)
-  Author_Date:  MC_2013/03/05
+				Rescale all entries to value range [0.1-0.9]
+  Author_Date:  MC_2014/01/12
 ******************************************************************************/
 ScoreVector *
-FastaIO::LoadPspData(int seqL, bool skip)
+FastaIO::LoadPspData(int seqL, int wL, bool skip)
 {
   ScoreVector * pData = NULL;
 if (!skip) // else skip processing this line and put ready on next >line
@@ -273,12 +268,10 @@ if (!skip) // else skip processing this line and put ready on next >line
   string::size_type pos;
   pos = _pLine.find_first_not_of(" \t0.123456789\n\r\f");
   if ( pos != string::npos )
-  {
-    _pPSPerror = new string("--Error1--FastaIO::LoadPspData: only white spaces and decimals characters (with dots) allowed.");
-    return NULL;
-  }
+  { return NULL;}
   // load the probs into Scorevector
   int i = 0; // count how many entries loaded
+  double Max = -1; double Min = 100000; // track to enable rescaling [0.1-0.9]
   double prob;
   pData = new ScoreVector;
   // now load data
@@ -289,32 +282,37 @@ if (!skip) // else skip processing this line and put ready on next >line
     istr >> prob;
     _pLine.erase(0,pos); // erase prob
     while ( _pLine.find_first_of("\t ") == 0) _pLine.erase(0,1); // erase space
-    pData->push_back(prob);
+    if ((i > seqL-wL && i < seqL) || (i > 2*seqL-wL && i < 2*seqL))
+    { pData->push_back(0);} // overwrite to zero (masked positions at seq-end)
+    else 
+    { pData->push_back(prob);
+      if (prob > Max){Max = prob;}
+      if (prob < Min){Min = prob;}
+    }
     i++;
   }
-  // check if total pData equals L+1
-  if ( i != seqL+1)
+  // check if total pData equals L or 2L
+  if ( i != seqL && i != 2*seqL)
+  { cerr << "--Error--PSP: nbr of entries = " << i << " while L/2L = " << seqL << "/" << 2*seqL << endl;
+    delete pData; pData = NULL; return NULL;}
+  // rescale all valid loaded entries between [0.1- 0.9]
+  if (Max != Min) // else all entries are the same (uniform psp)
   {
-    if (i < seqL+1)
-      _pPSPerror = new string("--Error2--FastaIO::LoadPspData: too few psp entries described (must equal length+1 of FASTA sequence).");
-    else
-      _pPSPerror = new string("--Error2--FastaIO::LoadPspData: too much psp entries described (must equal length+1 of FASTA sequence)."); 
-    delete pData; pData = NULL;
-    return NULL;
+    for (int j = 0; j < i; j++)
+    { 
+      if (!((j > seqL-wL && j < seqL) || (j > 2*seqL-wL && j < 2*seqL)))
+      {(*pData)[j] = 0.1 + 0.8*((*pData)[j]-Min)/(Max-Min);}
+    }
   }
-  // check if all entries sum up to 1
-  double sum = 0;
-  for (int j = 0; j < i; i++)
+  else // set all entries to '1' (uniform psp)
   {
-    sum += (*pData)[j];
-  }
-  if ( sum > 1.0000000000000000001 || sum < 0.999999999999999999)
-  {
-    _pPSPerror = new string("--Error3--FastaIO::LoadPspData: psp entries do not sum up to 1.");
-    delete pData; pData = NULL;
-    return NULL;
+    for (int j = 0; j < i; j++)
+    { if (!((j > seqL-wL && j < seqL) || (j > 2*seqL-wL && j < 2*seqL)))
+      {(*pData)[j] = 1;}
+    }
   }
 }
+
 
   // set pointer ready on next line
   _pLine = "";

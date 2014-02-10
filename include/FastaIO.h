@@ -14,7 +14,6 @@ class FastaIO {
   bool _isOpen;
   bool _hasNext;
   string _pLine;
-  string * _pPSPerror;
 
  public:
   FastaIO(string *fileName);
@@ -26,8 +25,7 @@ class FastaIO {
   SequenceObject * NextSequence();
   double * ReadDirichlet(); // for MotifComparison
   string * ReadSeqID(); // for MotifSampler::UpdatePspScores
-  ScoreVector * LoadPspData(int L, bool skip);// for MotifSampler::UpdatePspScores
-  string * GetPSPerror(){return _pPSPerror;};
+  ScoreVector * LoadPspData(int L, int w, bool skip);// for MotifSampler::UpdatePspScores
 
   // adaptors
   void Close();

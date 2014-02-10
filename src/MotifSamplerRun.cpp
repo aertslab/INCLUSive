@@ -5,6 +5,7 @@
 // release version 3.1.4 : 1 bug fixed in UpdateMasksFromInstanceMap
 // release version 3.1.5 : multiple priors and sampling extensions
 // release version 3.2.0 : implement PSP
+// release version 3.2.2 : revise PSP
 
 /******************************************************************************
   Method: 
@@ -27,7 +28,7 @@ MotifSamplerRun::MotifSamplerRun(string * pFastaFile, strand_modes strand, GFFWr
   _pComputationMap = new map < SequenceObject *, SequenceComputation * >;
   _nbrSequences = 0;
   _w = 0; // initialize the motif length to 0
-  _pspSetting = "n"; // to be set later
+  _pPriorDistributions = NULL; // to be set later
   ostringstream cerrstr;
 
   // internal sequence pointer
@@ -102,7 +103,7 @@ MotifSamplerRun::MotifSamplerRun(string * pFastaFile, strand_modes strand, GFFWr
 
   _localMotif = NULL;
   _pLocalCounts = NULL;
-  _pgfftrack = NULL;
+
 
 }
 
@@ -169,9 +170,20 @@ MotifSamplerRun::~MotifSamplerRun()
   for (int i=0; i<_w; i++)
     delete[] _pLocalCounts[i];
   delete[] _pLocalCounts;
-	
-  // trackFile unlink
-  _pgfftrack = NULL;
+
+  // _pPriorCopyDistribution 
+  if (_pPriorDistributions != NULL)
+  { // cleanup distributions
+    for(int i = 0; i < (int)_pPriorDistributions->size(); i++)
+    { if ( (*_pPriorDistributions)[i] != NULL)
+        delete (*_pPriorDistributions)[i];
+      (*_pPriorDistributions)[i] = NULL;
+    }
+    delete _pPriorDistributions;
+  }
+  _pPriorDistributions = NULL;
+
+  // file unlink
   _pgffio = NULL;
   // cerr << "DEBUG: MotifSamplerRun::~MotifSamplerRun" << endl;
 }
@@ -380,7 +392,7 @@ void
     i++;
     mi++;
   }
-  // cerr << "DEBUG: MotifSamplerRun::InitFixedSizeInstanceMap" << endl;
+  //cerr << "DEBUG: MotifSamplerRun::InitFixedSizeInstanceMap" << endl;
   return;
 }
 
@@ -516,159 +528,6 @@ void
 }
 
 
-
-/******************************************************************************
-  Method: 
-  Class:        
-  Arguments: 
-  
-  Description:
-  
-  Date:         2003/06/26
-  Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
-  
-******************************************************************************/
-/*void
-  MotifSamplerRun::SampleMaxSizeInstanceMap(int nbr)
-{
-
-  // initialize local variables
-  Instance *
-    pSite = NULL;
-  SequenceObject *
-    pSeq = NULL;
-  SequenceComputation *
-    pComp = NULL;
-  bool foundInstance = false;
-  int
-    n = 0;
-  // cerr << "DEBUG: MotifSamplerRun::SampleMaxSizeInstanceMap" << endl;
-  if (nbr < 1)
-  {
-    cerr <<
-      "--Error-- MotifSamplerRun::SampleMaxSizeInstanceMap() maximal number of motif should be greater than 1."
-      << endl;
-    cerrstr << "--Error-- MotifSamplerRun::SampleMaxSizeInstanceMap() maximal number of motif should be greater than 1."
-      << endl;
-    _pgffio->AddComment(cerrstr.str());
-    cerrstr.flush(); // flush
-    if (_pInstanceMap != NULL)
-      _pInstanceMap->ClearMap();
-    _pInstanceMap = NULL;
-    return;                     // empty instance map
-  }
-
-  // vector to store start position
-  vector < int >
-  pVec(nbr);
-
-  // check current state of the instance map
-  if (_pInstanceMap != NULL)
-  {
-
-    // clear all sites from the current instance map
-    _pInstanceMap->ClearMap();
-  }
-  else
-  {
-
-    // instance map is not defined create a new one
-    _pInstanceMap = new InstanceMap;
-  }
-  _nbrInstances = 0;
-  _nbrSequencesWithInstances = 0;
-  MapIterator mi = _pComputationMap->begin();
-  while (mi != _pComputationMap->end())
-  {
-
-    // get key and value of current map entry
-    pSeq = (*mi).first;         // sequence object 
-    pComp = (*mi).second;       // sequence computation object
-
-    // reset boolean 
-    foundInstance = false;
-    if (_strand == plus_strand || _strand == both)
-    {
-
-      // get number of estimated motif instances
-      n = pComp->GetEstimatedNumberInstances(plus_strand);
-      // cerr << "DEBUG: Number of instances found (+): " << n << endl;
-      if (n > 0)
-      {
-        if (n > nbr)
-          n = nbr;
-
-        // sample nbr start positions
-        pComp->SampleInstanceStart(pVec, n, plus_strand);
-        for (int j = 0; j < n; j++)
-        {
-          if (pVec[j] != -1)
-          {
-
-            // create instance
-            pSite = new Instance(pSeq, plus_strand, pVec[j], _w);
-            if (pSite != 0)
-            {
-              // cerr << "DEBUG sampled site: " << *(pSite->PrintSite()) << endl;
-              pSite->SetScore(pComp->GetWxAt(pVec[j], plus_strand));
-              _nbrInstances++;
-              if (!foundInstance)
-                _nbrSequencesWithInstances++;
-              foundInstance = true;
-
-              // append sites to InstanceMap
-              _pInstanceMap->AddInstance(pSite);
-            }
-          }
-        }
-      }
-    }
-    if (_strand == minus_strand || _strand == both)
-    {
-
-      // get number of estimated motif instances
-      n = pComp->GetEstimatedNumberInstances(minus_strand);
-      // cerr << "DEBUG: Number of instances found (-): " << n << endl;
-      if (n > 0)
-      {
-        if (n > nbr)
-          n = nbr;
-
-        // sample nbr start positions
-        pComp->SampleInstanceStart(pVec, n, minus_strand);
-        for (int j = 0; j < n; j++)
-        {
-          if (pVec[j] != -1)
-          {
-
-            // create instance
-            pSite = new Instance(pSeq, minus_strand, pVec[0], _w);
-            if (pSite != 0)
-            {
-              // cerr << "DEBUG sampled site: " << *(pSite->PrintSite()) << endl;
-              pSite->SetScore(pComp->GetWxAt(pVec[j], minus_strand));
-              _nbrInstances++;
-              if (!foundInstance)
-                _nbrSequencesWithInstances++;
-              foundInstance = true;
-
-              // append sites to InstanceMap
-              _pInstanceMap->AddInstance(pSite);
-            }
-          }
-        }
-      }
-    }
-
-    // augment counter and iterator
-    mi++;
-  }
-  // cerr << "DEBUG: MotifSamplerRun::SampleMaxSizeInstanceMap" << endl;
-  return;
-}
-
-*/
-
 /******************************************************************************
   Method: 
   Class:        
@@ -728,7 +587,7 @@ void
 
       // get number of estimated motif instances
       //nbr = pComp->GetEstimatedNumberInstances(plus_strand);
-      nbr = pComp->GetNumberInstances(plus_strand);//
+      nbr = pComp->GetNumberInstances(plus_strand, 0);//
       // cerr << "DEBUG: Number of instances found (+): " << nbr << endl;
 
       if (nbr > 0)
@@ -769,7 +628,7 @@ void
 
       // get number of estimated motif instances
       //nbr = pComp->GetEstimatedNumberInstances(minus_strand);
-      nbr = pComp->GetNumberInstances(minus_strand);//
+      nbr = pComp->GetNumberInstances(minus_strand, 0);//
       // cerr << "DEBUG: Number of instances found (-): " << nbr << endl;
 
       if (nbr > 0)
@@ -1102,7 +961,7 @@ void
 void
   MotifSamplerRun::SelectBestInstanceMap()
 {
-
+  //cerr << "debug:MotifSamplerRun::SelectBestInstanceMap - begin" << endl;
   // initialize local variables
   Instance *
     pSite = NULL;
@@ -1145,7 +1004,7 @@ void
 
       // get number of estimated motif instances
       //nbr = pComp->GetEstimatedNumberInstances(plus_strand);
-      nbr = pComp->GetNumberInstances(plus_strand);//
+      nbr = pComp->GetNumberInstances(plus_strand, 1);//
       if (nbr < 1)
       {
 
@@ -1187,7 +1046,7 @@ void
 
       // get number of estimated motif instances
       //nbr = pComp->GetEstimatedNumberInstances(minus_strand);
-      nbr = pComp->GetNumberInstances(minus_strand);//
+      nbr = pComp->GetNumberInstances(minus_strand, 1);//
       if (nbr < 1)
       {
 
@@ -1228,7 +1087,7 @@ void
     // go to the next sequence in the set
     ++mi;
   }
-  // cerr << "DEBUG: MotifSamplerRun::SelectBestInstanceMap" << endl;
+  //cerr << "DEBUG: MotifSamplerRun::SelectBestInstanceMap - end" << endl;
   return;
 }
 
@@ -1329,17 +1188,16 @@ bool
 }
 
 /******************************************************************************
-  Description:  UpdatePspScores(string * pPspFile)
-  Date:         2012/09/19
+  Description:  LoadPspScores(string * pPspFile, string bPSPimpact)
+                Read the scores from file (L or 2L entries) and linearize
+  Date:         2013/12/30
   Author:       Marleen Claeys <mclaeys@qatar.net.qa>
   
 ******************************************************************************/
 bool
-  MotifSamplerRun::UpdatePspScores(string * pPspFile, string psp)
+  MotifSamplerRun::LoadPspScores(string * pPspFile, bool bPSPs)
 {
-  // cerr << "DEBUG: MotifSamplerRun::UpdatePspScores" << endl;
-  _pspSetting = psp;
-	
+  // cerr << "DEBUG: MotifSamplerRun::LoadPspScores" << endl;
   bool implemented = true;
   string error = "";
   string *id = NULL;
@@ -1354,9 +1212,9 @@ bool
   FastaIO *fileIO = new FastaIO(pPspFile);
   if (fileIO == NULL)
   {
-    cerr << "--Error-- MotifSamplerRun::UpdatePspScores: "
+    cerr << "--Error-- MotifSamplerRun::LoadPspScores: "
       << "Unable to open psp file (-q)" << endl;
-    cerrstr << "--Error-- MotifSamplerRun::UpdatePspScores: "
+    cerrstr << "--Error-- MotifSamplerRun::LoadPspScores: "
       << "Unable to open psp file (-q)" << endl;
     _pgffio->AddComment(cerrstr.str());
     cerrstr.flush(); // flush     
@@ -1370,37 +1228,31 @@ bool
       id = fileIO->ReadSeqID();
       if (id == NULL)
       { // incorrect format
-        error = "--Error-- MotifSamplerRun::UpdatePspScores: incorrect format for sequence identification (> lines).";
+        error = "--Error-- MotifSamplerRun::LoadPspScores: incorrect format for sequence identification (> lines).";
         implemented = false; break;
       }
       pSeqComp = FindSequence(id);
       if (pSeqComp == NULL)
       { // sequence id not found, skip this information
-        error = "--Warning--MotifSamplerRun::UpdatePspScores: sequence not found in FASTA file (-f). Skip sequence >";
+        error = "--Warning--MotifSamplerRun::LoadPspScores: sequence not found in FASTA file (-f). Skip sequence >";
         error.append(*id);
         cerr << error << endl;
         cerrstr << error << endl;
         _pgffio->AddComment(cerrstr.str());
         cerrstr.flush(); // flush     
         // set pointer ready on next >line
-        fileIO->LoadPspData(0, 1);
+        fileIO->LoadPspData(0, 0,1);
         delete id; id = NULL;
         continue;
       }
-      pPSP = fileIO->LoadPspData((pSeqComp->ParentSequence())->Length(), 0); 
+      pPSP = fileIO->LoadPspData((pSeqComp->ParentSequence())->Length(), _w, 0); 
       if (pPSP == NULL)
       { // incorrect format
-        error = "--Error-- MotifSamplerRun::UpdatePspScores: incorrect format in PSP probabilities of sequence >";
+        error = "--Error-- MotifSamplerRun::LoadPspScores: incorrect format (check number of entries (L or 2L), white spaces, no kommas) for sequence >";
         error.append(*id);
-        string * psperror = fileIO->GetPSPerror();
-        if (psperror != NULL)
-        {
-          error.append("\n");
-          error.append(*psperror);
-        }
         implemented = false; break;
       }
-      pSeqComp->UpdatePspScores(pPSP, _strand);
+      pSeqComp->LoadPspScores(pPSP, _strand, bPSPs);
       nbrPSPseq++;
       trackSeq.append(">");trackSeq.append(*id);trackSeq.append(" ");
       delete id; id = NULL;
@@ -1423,60 +1275,24 @@ bool
   // check if all fasta sequences have been covered
   if (implemented && nbrPSPseq != _nbrSequences)
   {
-	string warning = "--Warning--MotifSamplerRun::UpdatePspScores: The number of sequences in PSP file (-q) does not equal the number of sequences in FASTA file (-f). PSP was stored for [";
-	warning.append(trackSeq);
+    char pTmp[128];
+    string warning = "--Warning--MotifSamplerRun::LoadPspScores: The number of sequences in PSP file (";
+    sprintf(pTmp, "%d", nbrPSPseq);
+    warning.append(pTmp);
+    warning.append(") does not equal the number of sequences in FASTA file (");
+    sprintf(pTmp, "%d", _nbrSequences);
+    warning.append(pTmp);
+    warning.append("). PSP was stored for [");
+    warning.append(trackSeq);
 	warning.append("].");
     cerr << warning << endl;
     cerrstr << warning << endl;
     _pgffio->AddComment(cerrstr.str());
     cerrstr.flush(); // flush     
   }
-
-  // cerr << "DEBUG: MotifSamplerRun::UpdatePspScores" << endl;
+  // cerr << "DEBUG: MotifSamplerRun::LoadPspScores" << endl;
   return implemented;
 }
-
-/******************************************************************************
-  Method: 
-  Class:        
-  Arguments: 
-  
-  Description:
-  
-  Date:         2003/06/26
-  Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
-  
-******************************************************************************/
-void
-  MotifSamplerRun::UpdateMotifScores()
-{
-	// mark : this function is only used in ShiftInstanceMap.
-
-  // create motif model from current instance map
-  // cerr << "DEBUG: MotifSamplerRun::UpdateMotifScores" << endl;
-
-  // motif should be stored in _localMotif
-  if ( _localMotif == NULL )
-    BuildMotifFromInstanceMap(0); // not needed here (only for ConvergenceStep)
-  
-  // iterate through sequences 
-  MapIterator seqIter = _pComputationMap->begin();
-  while (seqIter != _pComputationMap->end())
-
-  {
-    if (_localMotif != NULL)
-    {
-      // score sequence with motif model
-      (*seqIter).second->UpdateInstanceMotifScore(_localMotif, _strand);
-      (*seqIter).second->UpdateInstanceExpWx(_strand, 0); // no PSP needed here
-    }
-    seqIter++;
-  }
-  // cerr << "DEBUG: MotifSamplerRun::UpdateMotifScores" << endl;
-  return;
-}
-
-
 
 /******************************************************************************
   Method: 
@@ -1503,10 +1319,7 @@ void
 
     // score sequence
     (*ci).second->UpdateInstanceMotifScore(_localMotif, _strand);
-    if (_pspSetting == "s" || _pspSetting == "b")
-      (*ci).second->UpdateInstanceExpWx(_strand, 1);
-    else
-      (*ci).second->UpdateInstanceExpWx(_strand, 0);
+    (*ci).second->UpdateInstanceExpWx(_strand);
     // next sequence
     ci++;
   }
@@ -1538,7 +1351,7 @@ void
   }
 
   // build motif model
-  BuildMotifFromInstanceMap(0); // NO psp applicable
+  BuildMotifFromInstanceMap(); // NO psp applicable
   if (_localMotif == NULL)
 
   {
@@ -1577,7 +1390,7 @@ void
 {
   // cerr << "DEBUG: MotifSamplerRun::ShiftInstanceMap" << endl;
   // first get score of latest motif from instance map
-  BuildMotifFromInstanceMap(0); // NO psp applicable
+  BuildMotifFromInstanceMap(); // NO psp applicable
   // initially there is no shift
   double
     ic = _localMotif->InformationContent(_pBgModel->GetSNF());
@@ -1698,15 +1511,23 @@ void
     pTmp = NULL;
 
     // create motif model from current instance map and update motif scores
-    BuildMotifFromInstanceMap(0); // no PSP needed here 
-    UpdateMotifScores();
-
+    BuildMotifFromInstanceMap(); // no PSP needed here 
+    // iterate through sequences 
+    MapIterator seqIter = _pComputationMap->begin();
+    while (seqIter != _pComputationMap->end())
+    {
+      if (_localMotif != NULL)
+      {
+        // score sequence with motif model
+        (*seqIter).second->UpdateInstanceMotifScore(_localMotif, _strand);
+        (*seqIter).second->UpdateInstanceExpWx(_strand); // mark : psp will apply in case of 's'
+      }
+      seqIter++;
+    }
   }
   // cerr << "DEBUG: MotifSamplerRun::ShiftInstanceMap" << endl;
   return;
 }
-
-
 
 /******************************************************************************
   Method: 
@@ -1721,7 +1542,7 @@ void
   
 ******************************************************************************/
 void
-  MotifSamplerRun::BuildMotifFromInstanceMap(bool checkpsp)
+  MotifSamplerRun::BuildMotifFromInstanceMap()
 {
   // cerr << "DEBUG: MotifSamplerRun::BuildMotifFromInstanceMap" << endl;
   ostringstream cerrstr;
@@ -1750,23 +1571,13 @@ void
       _pLocalCounts[i][j] = 0;
 
   // loop over all instances in the InstanceMap and add them to the count matrix
+  // no corrective weighting by PSP here
   list < Instance * >::iterator iter = _pInstanceMap->begin();
-	
-  // if PSP in updating step, then apply PSP-prob of the respective instance
-  // (mark : one PSP-prob per instance, to be applied on all pos-counts of this instance
-  bool ApplyPSP = false;
-  if (checkpsp && (_pspSetting == "b" || _pspSetting == "u")) ApplyPSP = true;
-  double prob = 1;
-	
+
   int
     nt;
   while (iter != _pInstanceMap->end())
   {
-    // get the PSP-prob of this instance
-    if (ApplyPSP)
-    {
-prob = (FindSequence(((*iter)->ParentSequence())->GetID()))->GetPspScoreAt((*iter)->Start(), (*iter)->Strand());
-    }
     // get site
     if ((*iter)->Site() != NULL)
     {
@@ -1774,7 +1585,7 @@ prob = (FindSequence(((*iter)->ParentSequence())->GetID()))->GetPspScoreAt((*ite
       {
         nt = (*((*iter)->Site()))[j];
         if (nt >= 0 && nt < 4)
-          _pLocalCounts[j][nt] += prob;
+          _pLocalCounts[j][nt] += 1;
       }
     }
     iter++;                     // next
@@ -1816,8 +1627,12 @@ void
 {
   // cerr << "DEBUG: MotifSamplerRun::BuildMotifFromReducedInstanceMap" << endl;
   ostringstream cerrstr;
-  // get id of sequence
-  string* pSeqId = pSeq->GetID();
+ 
+  // get id of sequence to be skipped in 'reduced'
+  // 'dummmyy' is a work around for full instance map in convergence step, 
+  // this assumes a seqid will never be named dummmyy
+  string * pSeqId = new string("dummmyy"); 
+  if (pSeq != NULL) {*pSeqId = *pSeq->GetID();}
   
   if (_pInstanceMap == NULL)
   {
@@ -1842,12 +1657,7 @@ void
 
   // loop over all instances in the InstanceMap and add them to the count matrix
   // cerr << "DEBUG: Loop over all instances." << endl;
-	
-  // if PSP in updating step, then apply PSP-prob of the respective instance
-  // (mark : one PSP-prob per instance, to be applied on all pos-counts of this instance
-  bool ApplyPSP = false;
-  if (_pspSetting == "b" || _pspSetting == "u") ApplyPSP = true;
-  double prob = 1;
+  double prob; // refers to psp priorization
 	
   list < Instance * >::iterator iter = _pInstanceMap->begin();
   int
@@ -1867,17 +1677,14 @@ void
     // get ID of ParentSequence
     string *
       pInstanceID = (*iter)->PrintSeqName();
-    // get the PSP-prob of this instance
-    if (ApplyPSP)
-    {
-prob = (FindSequence(((*iter)->ParentSequence())->GetID()))->GetPspScoreAt((*iter)->Start(), (*iter)->Strand());
-    }
     // cerr << "DEBUG: next instance = " << *pInstanceID << endl;
     // if (pInstanceID->compare(0, pInstanceID->size(), *pSeqId))
     if (pInstanceID->compare(*pSeqId))
-    {                           // is 0 if both strings are equal
+    { // compare is 0 (thus skipped) if both strings are equal
       // cerr << "DEBUG selected instance " << *((*iter)->PrintSite())  << " from " << *pInstanceID << " - " << *pSeqId << endl;
-      // get site    
+      // get the PSP(x) of this instance
+      prob = (FindSequence(((*iter)->ParentSequence())->GetID()))->GetPspScoreAt((*iter)->Start(), (*iter)->Strand());
+      // get site
       if ((*iter)->Site() != NULL)
       {
         for (int j = 0; j < _w; j++)
@@ -1902,8 +1709,10 @@ prob = (FindSequence(((*iter)->ParentSequence())->GetID()))->GetPspScoreAt((*ite
     _localMotif = new PWM(_w, _pLocalCounts, _pPseudoCounts);
   }
 
-  // cerr << "DEBUG: motif model (reduced) = " << endl;
-  // _localMotif->StderrPrintMatrix();
+  //cerr << "DEBUG: motif model (reduced) = " << endl;
+  //_localMotif->StderrPrintMatrix();
+  // cleanup
+  delete pSeqId; pSeqId = NULL;
   
   // cerr << "DEBUG: MotifSamplerRun::BuildMotifFromReducedInstanceMap" << endl;
   return;
@@ -1928,7 +1737,7 @@ MotifSamplerRun::GetMotifModel()
   // cerr << "DEBUG: MotifSamplerRun::GetMotifModel" << endl;
 
   // first get score of latest motif from instance map
-  BuildMotifFromInstanceMap(0); // no PSP applicable
+  BuildMotifFromInstanceMap(); // no PSP applicable
   // cerr << "DEBUG: MotifSamplerRun::GetMotifModel" << endl;
   return _localMotif;
 }
@@ -2103,7 +1912,7 @@ MotifSamplerRun::ResetMasks(int wNew)
 double
   MotifSamplerRun::LogLikelihoodScore()
 {
-  // cerr << "DEBUG: MotifSamplerRun::LogLikelihoodScore" << endl;
+  //cerr << "DEBUG: MotifSamplerRun::LogLikelihoodScore - begin" << endl;
   double
     ll = 0;
   MapIterator mi = _pComputationMap->begin();
@@ -2155,7 +1964,8 @@ double
     delete pRVec;
     mi++;
   }
-  // cerr << "DEBUG: MotifSamplerRun::LogLikelihoodScore" << endl;
+//cerr << "ll-all=" << ll << endl;
+  //cerr << "DEBUG: MotifSamplerRun::LogLikelihoodScore - end" << endl;
   return ll;
 }
 
@@ -2168,7 +1978,7 @@ double
   
   Description:  
   
-  Date:         2003/06/26
+  Date:         2013/05/14
   Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
   
 ****************************************************************************/
@@ -2210,7 +2020,7 @@ MotifSamplerRun::SetMotifLength(int wLength)
         _pLocalCounts[i][j] = 0;
     }
   }
-  
+
   // set motif length in individual sequences
   string id = "";
   MapIterator si = _pComputationMap->begin();
@@ -2218,48 +2028,233 @@ MotifSamplerRun::SetMotifLength(int wLength)
   {
     if ((*si).first->Length() < _w)
     { id = *(*si).first->GetID();
-      // remove this sequence from dataset
-      _pComputationMap->erase(si); si++;
-      _nbrSequences--;
-      // also remove from _pSequenceList
+cerr << "--Warning::MotifSamplerRun::SetMotifLength : remove sequence " <<
+id  << " as too short length (L= " 
+<< (*si).first->Length() << ") for motif detection (w=" << _w << ")." << endl;
+      // remove this sequence from _pSequenceList
       SeqIterator i = _pSequenceList->begin();
       for (; i != _pSequenceList->end(); i++)
       { if ( *(*i)->GetID() == id)
-        { SequenceObject * pObj = *i;
-          _pSequenceList->erase(i);
-          // delete object
-          delete pObj; pObj = NULL;
+        { _pSequenceList->erase(i);
           break;
         }
       }
+      // delete sequenceObject and SequenceComputation
+      delete (*si).first; delete (*si).second;
+      // remove this element from _pComputationMap
+      _pComputationMap->erase(si); 
+      _nbrSequences--;
+      // restart (avoid iterator jump issues)
+      si = _pComputationMap->begin();
     }
-    else { (*si).second->SetMotifLength(_w);}
-    si++; 
+    else 
+    { (*si).second->SetMotifLength(_w); si++;}
   }
 
   //cerr << "DEBUG: MotifSamplerRun::SetMotifLength" << endl;
   return;
 }
-
 /******************************************************************************
-  Description:  LinkNbrInstInfo : link _pPriorDistrs from main into all
-                SequenceComputation-objects, and copy bsampling locally
-  Author_Date:  MC_2009/10/19
+  Description:  LoadNbrInstInfo : 
+                read nbr inst/seq prior input and link in each 
+                SequenceComputation object
+                Set the bSampling or bEstimation mode
+  Author_Date:  MC_2013/12/30
 ******************************************************************************/
-void 
-MotifSamplerRun::LinkNbrInstInfo(int maxM, vector<Distribution*>* priorDistrs, bool sample)
+bool 
+MotifSamplerRun::LoadNbrInstInfo(int maxM, string * priorInput, bool sample)
 {
-//cerr << "debug--MotifSamplerRun::LinkNbrInstInfo - begin" << endl;
-  // iterate through _pComputationMap
+//cerr << "debug--MotifSamplerRun::LoadNbrInstInfo - begin" << endl;
+
+  // iterate through _pComputationMap to set the sampling mode 
   MapIterator si = _pComputationMap->begin();
   while (si != _pComputationMap->end())
+  { (*si).second->SetNbrInstSampling(sample);si++;}
+  si = _pComputationMap->begin();
+
+  ScoreVector * pProbs = NULL;
+  string::size_type pos;
+
+  // case f (the prior should be used as final  _pCopyProbDistr)
+	// compute values and store in SeqComp::_p(Rev)CopyProb
+  if ((*priorInput)[0] == 'f')
   {
-    (*si).second->LinkNbrInstPrior(maxM, priorDistrs);
-    (*si).second->SetNbrInstSampling(sample);
-    si++;
+    priorInput->erase(0,1); // erase 'f'
+    pProbs = new ScoreVector;
+    double p;
+    while (!priorInput->empty() && (int)pProbs->size() < maxM+1)
+    { 
+      pos = priorInput->find_first_not_of("0.123456789");
+      istringstream istr(priorInput->substr(0,pos)); // convert to double
+      istr >> p;
+      if (p < 0 || p > 1) // invalid prob
+      { delete pProbs; return false;} // invoke to exit
+      priorInput->erase(0,pos);
+      while ( priorInput->find_first_of("_ \t") == 0) priorInput->erase(0,1); 
+      pProbs->push_back(p);
+    }
+    // cut low values at the end
+    for(int i = (int)pProbs->size()-1; i >= 0; i--) 
+    { if ( (*pProbs)[i] <= 0.001) pProbs->pop_back();
+      else break;
+    }
+    // make a check on the total entry
+    double sum = 0;
+    for (int i = 0; i < (int)pProbs->size(); i++)
+    { sum += (*pProbs)[i];}
+    if (sum < 0.001)
+    { delete pProbs; return false;} // invoke to exit
+    // copy scorevector into SeqComp
+    while (si != _pComputationMap->end())
+    { (*si).second->LoadNbrInstFixed(pProbs); si++;}
+    // cleanup
+    delete pProbs; pProbs = NULL;
   }
-  //cerr << "debug--MotifSamplerRun::LinkNbrInstInfo - end" << endl;
-  return;
+  else
+  { // create all prior-copy-distributions for c=1,2,...,-M
+    // or reset -M in case Pr(c) becomes too small
+
+    // create next distributions
+    char c = (*priorInput)[0]; // 0,u,b,e
+    switch (c)
+    {
+      case '0' :
+      { // read prior p
+        double p; // first entry of X_X
+        pos = priorInput->find_first_not_of("0.123456789");
+        istringstream istr(priorInput->substr(0,pos)); // convert to double
+        istr >> p;
+        if (p <= 0 || p >= 1) // invalid prior
+        { return false;} // invoke to exit
+        priorInput->erase(0,pos);
+        while ( priorInput->find_first_of("_ \t") == 0) priorInput->erase(0,1); 
+        // read kappa 
+        double kappa; 
+        if ( !priorInput->empty()) 
+        { 
+          pos = priorInput->find_first_not_of("0.123456789");
+          istringstream istr(priorInput->substr(0,pos)); // convert to double
+          istr >> kappa;
+          if (kappa < 0 || kappa > 1) // invalid kappa
+          { return false;} // invoke to exit
+          priorInput->erase(0,pos);
+          while ( priorInput->find_first_of("_ \t") == 0) priorInput->erase(0,1); 
+        }
+        if (!priorInput->empty()) 
+        { return false;} // invoke to exit 
+        // construct distributions
+        pProbs = new ScoreVector;
+        double value, sum(1);
+        pProbs->push_back(1 - p); // Pr(0)
+        pProbs->push_back(p); // Pr(1)
+        for(int i = 2; i <= maxM; i++) 
+        { value = kappa * (*pProbs)[i-1];
+          sum += value;
+          if ( value/sum <= 0.001) break; // untill max or <0.001
+          pProbs->push_back(value);
+        }
+        // create local vector to store distributions 
+        _pPriorDistributions = new vector<Distribution *>;
+        for (int n = 1; n <= (int)pProbs->size() -1; n++)
+          _pPriorDistributions->push_back(new Distribution(pProbs, 0, n+1));
+        delete pProbs; pProbs = NULL;
+        break;
+      }
+      case 'u' : 
+      {
+        priorInput->erase(0,1); // erase 'u'
+        if ( !priorInput->empty()) break;
+        // create and store the distributions
+        pProbs = new ScoreVector; pProbs->push_back(1);
+        // create local vector to store distributions 
+        _pPriorDistributions = new vector<Distribution *>;
+        for (int n = 1; n <= maxM; n++) 
+        { pProbs->push_back(1);
+          _pPriorDistributions->push_back(new Distribution(pProbs, 0, n+1));
+        }
+        delete pProbs; pProbs = NULL;
+        break;
+      }
+      case 'b' : 
+      {
+        priorInput->erase(0,1); // erase 'b'
+        // read input
+        double p;
+        pos = priorInput->find_first_not_of("0.123456789");
+        istringstream istr(priorInput->substr(0,pos)); // convert to double
+        istr >> p;
+        if (p <= 0 || p >= 1) // invalid prior
+        { return false;} // invoke to exit 
+        priorInput->erase(0,pos);
+        if ( !priorInput->empty()) break;
+        // create local vector to store distributions 
+        _pPriorDistributions = new vector<Distribution *>;
+        for (int n = 1; n <= maxM; n++)
+        { pProbs = new ScoreVector; 
+          for(int i = 0; i <= n; i++)
+            pProbs->push_back(pow(p,i)*pow((1-p),(n-i))*
+                   INCLUSIVE::fac(n)/INCLUSIVE::fac(n-i)/INCLUSIVE::fac(i));
+          for(int i = n; i >= 0; i--) // cut low values at the end
+          { if ( (*pProbs)[i] <= 0.001) pProbs->pop_back();
+            else break;
+          }
+          if ( (int)pProbs->size() == n + 1 )
+          { _pPriorDistributions->push_back(new Distribution(pProbs, 0, n+1));
+            delete pProbs; pProbs = NULL; 
+          }
+          else 
+          { delete pProbs; pProbs = NULL;
+            break;
+          }
+        }
+        break;
+      }
+      case 'e' : 
+      {
+        priorInput->erase(0,1); // erase 'e'
+        pProbs = new ScoreVector;
+        double p;
+        while (!priorInput->empty() && (int)pProbs->size() < maxM+1)
+        { 
+          pos = priorInput->find_first_not_of("0.123456789");
+          istringstream istr(priorInput->substr(0,pos)); // convert to double
+          istr >> p;
+          if (p < 0 || p >= 1) // invalid prob
+          { return false;} // invoke to exit 
+          priorInput->erase(0,pos);
+          while ( priorInput->find_first_of("_ \t") == 0) priorInput->erase(0,1); 
+          pProbs->push_back(p);
+        }
+        // cut low values at the end
+        for(int i = (int)pProbs->size()-1; i >= 0; i--) 
+        { if ( (*pProbs)[i] <= 0.001) { pProbs->pop_back();}
+          else break;
+        }
+        // make a check on the total entry
+        double sum = 0;
+        for (int i = 0; i < (int)pProbs->size(); i++)
+        { sum += (*pProbs)[i];}
+        if (sum < 0.001)
+        { delete pProbs; return false;} // invoke to exit
+        // create local vector to store distributions 
+        _pPriorDistributions = new vector<Distribution *>;
+        for (int n = 1; n <= (int)pProbs->size() - 1; n++)
+        { 
+          _pPriorDistributions->push_back(new Distribution(pProbs, 0, n+1)); 
+        }
+        delete pProbs; pProbs = NULL;
+        break;
+      }
+    }
+
+    // link to _priorDistrs in SequenceComputation
+    while (si != _pComputationMap->end())
+    { (*si).second->LinkNbrInstPrior(_pPriorDistributions); si++;}
+
+  }
+
+  //cerr << "debug--MotifSamplerRun::LoadNbrInstInfo - end" << endl;
+  return true;
 }
 
 /****************************************************************************
@@ -2309,12 +2304,10 @@ void
 void
   MotifSamplerRun::InitializationStep(int iterations)
 {
-  // cerr << "DEBUG: MotifSamplerRun::InitializationStep" << endl;
+  //cerr << "DEBUG: MotifSamplerRun::InitializationStep - begin" << endl;
   //cerr << "Initialize Instance Map" << endl;
   InitFixedSizeInstanceMap(1);
   //StderrPrintInstanceMap();
-  // print to trackFile
-  if (_pgfftrack != NULL){ PrintTrackPositions(0);}
   
   //cerr << "Starting initial 1 copy step" << endl;
   for (int i = 0; i < iterations; i++)
@@ -2324,14 +2317,8 @@ void
     // sample exactly one instance in each sequence 
     SampleFixedSizeInstanceMap(1);
 
-    // print information on screen
-    //cerr << i << "\t";
-    //StderrPrintMotifInfo();
-    // and on track 
-    if (_pgfftrack != NULL){ PrintTrackPositions(i+1);}
   }
-
-  // cerr << "DEBUG: MotifSamplerRun::InitializationStep" << endl;
+  //cerr << "DEBUG: MotifSamplerRun::InitializationStep -end" << endl;
   return;
 }
 
@@ -2343,7 +2330,7 @@ void
   Arguments:    int iterations, int shiftTime, int maxShift
   
   Description:  core sampling loop of the basic MotifSampler.
-								This includes a step in which instances are shifted to 
+ This includes a step in which instances are shifted to 
                 find better instances
   
   Date:         2003/06/26
@@ -2379,14 +2366,9 @@ void
 
       // build motif model from instances in instance map excluding current sequence 
       BuildMotifFromReducedInstanceMap(pSeq);
-
       // update motif scores
       pComp->UpdateInstanceMotifScore(_localMotif, _strand);
-      if (_pspSetting == "s" || _pspSetting == "b")
-        pComp->UpdateInstanceExpWx(_strand, 1);
-      else
-        pComp->UpdateInstanceExpWx(_strand, 0);
-
+      pComp->UpdateInstanceExpWx(_strand);
       // compute distribution to estimate number of instances
       //pComp->UpdateCopyProbability(_prior, _strand);
       pComp->UpdateCopyProbability(_strand);//
@@ -2396,7 +2378,6 @@ void
 
     // sample a new instance map
     SampleInstanceMap();
-
     // check number of instances
     if (_nbrInstances < 2 || _nbrSequencesWithInstances < 2)
     {
@@ -2407,16 +2388,10 @@ void
       break;
     }
 
-    // print information on current motif
-    //cerr << i << "\t";
-    //StderrPrintMotifInfo();
-    // and on track 
-    if (_pgfftrack != NULL){ PrintTrackPositions(20+i+1);}
-
     pSeq = NULL;
     pComp = NULL;
   }
-  // cerr << "DEBUG: MotifSamplerRun::CoreSamplingStep" << endl;
+  //cerr << "DEBUG: MotifSamplerRun::CoreSamplingStep - end" << endl;
   return;
 }
 
@@ -2436,6 +2411,7 @@ void
 void
   MotifSamplerRun::ConvergenceStep(int iterations)
 {
+  //cerr << "DEBUG: MotifSamplerRun::ConvergenceStep-begin" << endl;
   MapIterator
     mi = _pComputationMap->begin();
   SequenceObject *
@@ -2443,16 +2419,15 @@ void
   SequenceComputation *
     pComp = NULL;
   ostringstream cerrstr;
+  SequenceObject * pdummy = NULL;
 
   // cerr << "DEBUG: MotifSamplerRun::ConvergenceStep" << endl;
   for (int i = 0; i < iterations; i++)
   {
-
     // loop over all sequences
     mi = _pComputationMap->begin();
-
     // build motif model from all instances
-    BuildMotifFromInstanceMap(1); // gibbs iteration step
+    BuildMotifFromReducedInstanceMap(pdummy); // gibbs iteration step
     while (mi != _pComputationMap->end())
     {
       pSeq = (*mi).first;
@@ -2460,19 +2435,13 @@ void
 
       // update motif scores
       pComp->UpdateInstanceMotifScore(_localMotif, _strand);
-      if (_pspSetting == "s" || _pspSetting == "b")
-        pComp->UpdateInstanceExpWx(_strand, 1);
-      else
-        pComp->UpdateInstanceExpWx(_strand, 0);
-
+      pComp->UpdateInstanceExpWx(_strand);
       // compute distribution to estimate number of instances
       //pComp->UpdateCopyProbability(_prior, _strand);
       pComp->UpdateCopyProbability(_strand); //
-
       // next sequence
       mi++;
     }
-
     // create new instance map from curent scores
     SelectBestInstanceMap();
 
@@ -2485,198 +2454,15 @@ void
       pComp = NULL;
       break;
     }
-
-    //cerr << i << "\t";
-    //StderrPrintMotifInfo();
-    // and on track 
-    if (_pgfftrack != NULL){ PrintTrackPositions(20+70+i+1);}
-
     pSeq = NULL;
     pComp = NULL;
   }
-
-  BuildMotifFromInstanceMap(0); // no PSP applicable
+  BuildMotifFromInstanceMap(); // no PSP applicable
   //StderrPrintInstanceMap();
   
-  // cerr << "DEBUG: MotifSamplerRun::ConvergenceStep" << endl;
+  //cerr << "DEBUG: MotifSamplerRun::ConvergenceStep-end" << endl;
   return;
 }
-
-
-
-/****************************************************************************
-  Method:       CoreMaxSizeSamplingStep
-  Class:        MotifSamplerRun
-  Arguments:    int maxNbr, int iterations, int shiftTime, int maxShift
-  
-  Description:  core step of MotifSampler with a defined maximal number 
-                of instances per sequence 
-  
-  Date:         2003/06/26
-  Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
-  
-****************************************************************************/
-/*void
-  MotifSamplerRun::CoreMaxSizeSamplingStep(int maxNbr, int iterations,
-                                           int shiftTime, int maxShift)
-{
-  MapIterator mi = _pComputationMap->begin();
-  SequenceObject *pSeq = NULL;
-  SequenceComputation *pComp = NULL;
-  ostringstream cerrstr;
-  // cerr << "DEBUG: MotifSamplerRun::CoreMaxSizeSamplingStep" << endl;
-  if (maxNbr < 1)
-  {
-    cerr <<
-      "--Warning-- MotifSamplerRun::CoreMaxSizeSamplingStep() negative maximal number of instances given."
-      << endl;
-      cerrstr << "--Warning-- MotifSamplerRun::CoreMaxSizeSamplingStep() negative maximal number of instances given."
-      << endl;
-      _pgffio->AddComment(cerrstr.str());
-      cerrstr.flush();
-    return;
-  }
-  for (int i = 0; i < iterations; i++)
-  {
-  
-    if ( maxShift ) 
-    {
-      if ((i % shiftTime) == 0)
-      {
-        //cerr << "Shift Instances with " << maxShift << endl;
-        ShiftInstanceMap(maxShift);
-      }
-    }
-    
-    // loop over all sequences and update scores
-    mi = _pComputationMap->begin();
-    while (mi != _pComputationMap->end())
-    {
-      pSeq = (*mi).first;
-      pComp = (*mi).second;
-
-      // build motif model from instances in instance map excluding current sequence 
-      BuildMotifFromReducedInstanceMap(pSeq);
-
-      // update motif scores
-      pComp->UpdateInstanceMotifScore(_localMotif, _strand);
-      if (_pspSetting == "s" || _pspSetting == "b")
-        pComp->UpdateInstanceExpWx(_strand, 1);
-      else
-        pComp->UpdateInstanceExpWx(_strand, 0);
-
-      // compute distribution to estimate number of instances
-      //pComp->UpdateFixedSizeCopyProbability(maxNbr, _prior, _strand);
-      pComp->UpdateFixedSizeCopyProbability(maxNbr, _strand); //
-
-      // next sequence
-      mi++;
-    }
-
-    // sample a new instance map
-    SampleMaxSizeInstanceMap(maxNbr);
-
-    // check number of instances
-    if (_nbrInstances < 2 || _nbrSequencesWithInstances < 2)
-    {
-      //cerr << "--Warning-- not enough instances to proceed procedure." <<
-       // endl;
-      pSeq = NULL;
-      pComp = NULL;
-      break;
-    }
-
-    // print information on current motif
-    //cerr << i << "\t";
-    //StderrPrintMotifInfo();
-
-    pSeq = NULL;
-    pComp = NULL;
-  }
-  // cerr << "DEBUG: MotifSamplerRun::CoreMaxSizeSamplingStep" << endl;
-  return;
-}
-*/
-
-
-/****************************************************************************
-  Method:       MaxSizeConvergenceStep
-  Class:        MotifSamplerRun
-  Arguments:    int maxNbr, int iterations
-  
-  Description:  convergence step of MotifSampler with a maximal number of
-                instances defined
-  
-  Date:         2003/06/26
-  Author:       Gert Thijs <gert.thijs@esat.kuleuven.ac.be>
-  
-****************************************************************************/
-/*void
-  MotifSamplerRun::MaxSizeConvergenceStep(int maxNbr, int iterations)
-{
-  MapIterator mi = _pComputationMap->begin();
-  SequenceObject *
-    pSeq = NULL;
-  SequenceComputation *
-    pComp = NULL;
-  ostringstream cerrstr;
-  // cerr << "DEBUG: MotifSamplerRun::MaxSizeConvergenceStep" << endl;
-  for (int i = 0; i < iterations; i++)
-  {
-
-    // loop over all sequences
-    mi = _pComputationMap->begin();
-
-    // build motif model from all instances 
-    BuildMotifFromInstanceMap(1);
-    while (mi != _pComputationMap->end())
-    {
-      pSeq = (*mi).first;
-      pComp = (*mi).second;
-
-      // update motif scores
-      pComp->UpdateInstanceMotifScore(_localMotif, _strand);
-      if (_pspSetting == "s" || _pspSetting == "b")
-        pComp->UpdateInstanceExpWx(_strand, 1);
-      else
-        pComp->UpdateInstanceExpWx(_strand, 0);
-
-      // compute distribution to estimate number of instances
-      //pComp->UpdateFixedSizeCopyProbability(maxNbr, _prior, _strand);
-      pComp->UpdateFixedSizeCopyProbability(maxNbr, _strand); //
-
-      // next sequence
-      mi++;
-    }
-
-    // create new instance map from curent scores
-    SelectMaxSizeBestInstanceMap(maxNbr);
-
-    // check number of instances
-    if (_nbrInstances < 2 || _nbrSequencesWithInstances < 2)
-    {
-      //cerr << "--Warning-- not enough instances to proceed procedure." <<
-       // endl;
-      pSeq = NULL;
-      pComp = NULL;
-      break;
-    }
-
-    //cerr << i << "\t";
-    //StderrPrintMotifInfo();
-
-    pSeq = NULL;
-    pComp = NULL;
-  }
-
-  BuildMotifFromInstanceMap(0);
-  //StderrPrintInstanceMap();
-  
-  // cerr << "DEBUG: MotifSamplerRun::MaxSizeConvergenceStep" << endl;
-  return;
-}
-*/
-
 
 /****************************************************************************
   Method:       PrintInstanceMap
@@ -2738,51 +2524,6 @@ void
   cerr << "-----------------------------------------------------------\n\n";
   return;
 }
-/******************************************************************************
-  Description:  pretty print the track positions to file _pgfftrack
-  Author-Date:  MC-2009/10/22  
-******************************************************************************/
-void 
-  MotifSamplerRun::PrintTrackPositions(int i)
-{
-  // add the iteration step number 
-  ostringstream iter; iter << i;
-  string * comment = new string(iter.str());
-  iter.str("");
-  iter.clear();
-  comment->append("  ");
-
-
-  int start;
-  string lastseq = "";
-  list < Instance * >::iterator ii = _pInstanceMap->begin();
-  while (ii != _pInstanceMap->end())
-  {
-    if ((*ii) != NULL)
-    {
-      // assign seqid and compare with previous
-      if( lastseq != *(*ii)->ParentSequence()->GetID())
-      {
-        comment->append(";");
-        comment->append(*(*ii)->ParentSequence()->GetID());
-        comment->append("  ");
-      }
-      lastseq = *(*ii)->ParentSequence()->GetID();
-      // add the instance position
-      start = (*ii)->Start() + 1;
-      ostringstream ostr; ostr << start;
-      comment->append(ostr.str());
-      ostr.str("");
-      ostr.clear();
-      comment->append("  ");
-    }
-    ii++;
-  }
-  _pgfftrack->AddComment(comment);
-  delete comment; comment = NULL;
-  return;
-}
-
 
 /******************************************************************************
   Method:       ExtendLeftInstanceMap

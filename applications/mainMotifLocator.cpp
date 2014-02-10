@@ -322,6 +322,7 @@ main(int argc, char *argv[])
       // myMatrix->StderrPrintMatrix();
     }
   }
+	cerr << endl;
   cerr << count << " matrices loaded." << endl;
 
   if (!wronginput && count == 0) // count == 0
@@ -406,7 +407,6 @@ main(int argc, char *argv[])
     minXListIter = minXList.begin();
     while (matIter != matrixList.end())
     {
-
       // (*matIter)->StderrPrintMatrix();
       nbr = 0;
       minX = *minXListIter;
@@ -425,13 +425,13 @@ main(int argc, char *argv[])
       }
 
       // score background model => only necessary when motif length changes
-      if ((*matIter)->Length() != wLength)
-      {
+      //if ((*matIter)->Length() != wLength)
+      //{
         wLength = (*matIter)->Length();
 	      // define motif length in computation object
   	    pSeqComp->SetMotifLength(wLength);
         pSeqComp->UpdateInstanceBackgroundScore(pBgModel, wLength, strand);
-      }
+      //}
 
       // score sequences with motif model
       pSeqComp->UpdateInstanceMotifScore(*matIter, strand);
@@ -444,6 +444,7 @@ main(int argc, char *argv[])
       {
         wx =
           ((log(pSeqComp->GetWxAt(j, plus_strand))) - minX) / (maxX - minX);
+
         // and select motifs with score higher than threshold
         if (wx >= threshold)
         {
@@ -602,6 +603,7 @@ version()
   cout << "- (3.1.5) 14/03/12 : output error messages to user file." << endl;
   cout << "- (3.2.0) 28/09/12 : exit on PWM-reading error." << endl;
   cout << "- (3.2.1) 04/02/13 : scaling factors against higher-order bg freqs." << endl;
+  cout << "- (3.2.2) 16/01/14 : fully reset MaskVector at every next PWM assessment." << endl;
   cout << "- end." << endl;
   cout << endl;
 } 

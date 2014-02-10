@@ -32,7 +32,7 @@ Distribution::Distribution(int length, float *pArray)
     if (!_normalized)
     {
       // delete vector if not normalized
-      cerr << "--Error-- Distribution(): Problems normalizing distribution -> reset to NULL." << endl;
+      //cerr << "--Error-- Distribution(): Problems normalizing distribution -> reset to NULL." << endl;
       delete _dist;
       _dist = NULL;
     }
@@ -80,7 +80,7 @@ Distribution::Distribution(int length, int *pArray)
     if (!_normalized)
     {
       // delete vector if not normalized
-      cerr << "--Error-- Distribution(): Problems normalizing distribution -> reset to NULL." << endl;
+      //cerr << "--Error-- Distribution(): Problems normalizing distribution -> reset to NULL." << endl;
       delete _dist;
       _dist = NULL;
     }
@@ -127,9 +127,9 @@ Distribution::Distribution(int length, double *pArray)
     if (!_normalized)
     {
       // delete vector if not normalized
-      cerr <<
-        "--Error-- Distribution(): Problems normalizing distribution -> reset to NULL."
-        << endl;
+      //cerr <<
+        //"--Error-- Distribution(): Problems normalizing distribution -> reset to NULL."
+        //<< endl;
       delete _dist;
       _dist = NULL;
     }
@@ -178,9 +178,9 @@ Distribution::Distribution(vector<float> * pArray)
     if (!_normalized)
     {
       // delete vector if not normalized
-      cerr <<
-        "--Error-- Distribution(): Problems normalizing distribution -> reset to NULL."
-        << endl;
+      //cerr <<
+       // "--Error-- Distribution(): Problems normalizing distribution -> reset to NULL."
+       // << endl;
       delete _dist;
       _dist = NULL;
     }
@@ -228,9 +228,9 @@ Distribution::Distribution(vector<double> * pArray)
     if (!_normalized)
     {
       // delete vector if not normalized
-      cerr <<
-        "--Error-- Distribution(): Problems normalizing distribution -> reset to NULL."
-        << endl;
+      //cerr <<
+      //  "--Error-- Distribution(): Problems normalizing distribution -> reset to NULL."
+      //  << endl;
       delete _dist;
       _dist = NULL;
     }
@@ -279,9 +279,9 @@ Distribution::Distribution(vector<int> * pArray)
     if (!_normalized)
     {
       // delete vector if not normalized
-      cerr <<
-        "--Error-- Distribution(): Problems normalizing distribution -> reset to NULL."
-        << endl;
+     // cerr <<
+      //  "--Error-- Distribution(): Problems normalizing distribution -> reset to NULL."
+      //  << endl;
       delete _dist;
       _dist = NULL;
     }
@@ -421,14 +421,14 @@ Distribution::ApplyMask(int start, int length)
 
   // renormalize distribution
   _normalized = _Normalize();
-  if (!_normalized)
-  {
+  //if (!_normalized)
+  //{
     // delete vector if not normalized
     //cerr << "--Warning-- Distribution::ApplyMask(): all position set to 0 "
-        // << endl;
-     //delete _dist;
-     //_dist = NULL;
-  }
+         //<< "-> reset distribution to NULL." << endl;
+    // delete _dist;
+    // _dist = NULL;
+  //}
 
   return this;
 

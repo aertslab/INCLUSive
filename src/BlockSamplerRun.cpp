@@ -41,18 +41,12 @@ BlockSamplerRun::FixNbrInstForRoot()
   ScoreVector* pFixCopy = new ScoreVector(2,0);
   (*pFixCopy)[0] = 0.001;
   (*pFixCopy)[1] = 0.999;
-  // next is complex but a way to use the same function as MotifSamplerRun
-  Distribution * pFixDist = new Distribution(pFixCopy,0,2);
-  vector<Distribution*> * pFixDistVector = new vector<Distribution*>;
-  pFixDistVector->push_back(pFixDist);
-  // but a way to use the same function as MotifSamplerRun
-  _pRootComputation->LinkNbrInstPrior(1, pFixDistVector);
+  // a way to use the same function as MotifSamplerRun
+  _pRootComputation->LoadNbrInstFixed(pFixCopy);
   
   // cleanup
-  delete pFixDist; pFixDist = NULL;
   delete pFixCopy; pFixCopy = NULL;
-  delete pFixDistVector; pFixDistVector = NULL;
-  
+ 
   return; 
 }
 

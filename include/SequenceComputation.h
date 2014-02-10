@@ -15,6 +15,9 @@ class SequenceComputation{
     int _wlength; // current motif length
     int _length;  // sequence length
     bool _correct;
+    // PSP updating is always done
+    bool PSP_s; // if also sampling correction 
+    
   
     // internal score vectors
     ScoreVector *_pMotifScore;
@@ -23,6 +26,7 @@ class SequenceComputation{
     ScoreVector *_pExpWx;
     MaskVector *_pMask;
     ScoreVector *_pPspScore;
+    ScoreVector * _pPrior2NormFactor;
   
     // reverse strand score vectors
     ScoreVector *_pRevMotifScore;
@@ -31,12 +35,13 @@ class SequenceComputation{
     ScoreVector *_pRevExpWx;
     MaskVector *_pRevMask;
     ScoreVector *_pRevPspScore;
+    ScoreVector * _pRevPrior2NormFactor;
  
     ScoreVector *_pCopyProbDistr;
     ScoreVector *_pRevCopyProbDistr;
     // ScoreVector *_pPriorDistr;
     vector<Distribution*> * _priorDistrs; //
-    ScoreVector * _plogNormFactors;
+ 
     int _maxInst;
     bool _sampling; //
   
@@ -49,21 +54,20 @@ class SequenceComputation{
 
     // define sequence related background model
     void SetBackgroundModel(BackgroundModel *pBg);
-  
     // update motif length
     void SetMotifLength(int wLength);
 
     // link information on prior from main
-    void LinkNbrInstPrior(int max, vector<Distribution*>* distrs);
+    void LoadNbrInstFixed(ScoreVector * probvector);
+    void LinkNbrInstPrior(vector<Distribution*>* distrs);
     void SetNbrInstSampling(bool sample){ _sampling = sample; return;};
+    void LoadPspScores(ScoreVector * psp, strand_modes STRAND, bool psp_s);
   
     // update scores
     void UpdateInstanceMotifScore(PWM *pMotif, strand_modes STRAND);
     void UpdateInstanceBackgroundScore(BackgroundModel *pBg, int wLength, strand_modes STRAND);
     void UpdateSequenceBackgroundScore(BackgroundModel *pBg, strand_modes STRAND);
-    void UpdateInstanceExpWx(strand_modes STRAND, bool psp); 
-    void UpdateInstanceExpWx(strand_modes STRAND){UpdateInstanceExpWx(STRAND, 0); return;};// for BlockSamplerRun
-    void UpdatePspScores(ScoreVector * psp, strand_modes STRAND);
+    void UpdateInstanceExpWx(strand_modes STRAND); 
   
     // mask operations
     void UpdateMask(int start, int w, int value, strand_modes STRAND);
@@ -91,7 +95,7 @@ class SequenceComputation{
     MaskVector * GetMask(strand_modes STRAND);    
     ScoreVector * GetCopyProbability(strand_modes STRAND);
     //int GetEstimatedNumberInstances(strand_modes STRAND);
-    int GetNumberInstances(strand_modes STRAND);//
+    int GetNumberInstances(strand_modes STRAND, bool bSelect);//
     double GetCopyProbabilityAt(int nbr, strand_modes STRAND);
     double LogLikelihoodScore(vector<int> *pAlign, strand_modes STRAND);
   

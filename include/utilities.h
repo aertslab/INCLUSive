@@ -33,7 +33,7 @@ namespace INCLUSIVE {
   double SequenceLogBackgroundScore(SequenceObject *pSeq, strand_modes s, BackgroundModel *pBgM);
   double SequenceLogBackgroundScore(SequenceObject *pSeq, int start, int length, strand_modes s, BackgroundModel *pBgM);
 
-  double ComputeNInstancesProbability(ScoreVector *pExpWx, int n, int L, int W);
+  double ComputeNInstancesProbability(ScoreVector *pExpWx,int n, int L, int W);
   void ComputePriorDistribution(ScoreVector &pPrior, int n, double prior);
 
   // utility to reset scoring vector

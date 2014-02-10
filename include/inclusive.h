@@ -29,7 +29,8 @@ using namespace std;
 // (3.1.4) 1 bug fixed in MotifSamplerRun.cpp (mask)
 // (3.1.5) extension in mainMotifComparison.cpp (BLiC)
 // (3.2.0) implement positional prior (PSP) for mainMotifSampler.cpp 
-#define VERSION "3.2.1 - version March 18 2013 by Marleen Claeys"
+// (3.2.2) still revise PSP code
+#define VERSION "3.2.2 - version January 16, 2014 by Marleen Claeys"
 
 // type defintions for convenience
 typedef double** Matrix;

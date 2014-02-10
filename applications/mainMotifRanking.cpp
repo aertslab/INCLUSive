@@ -458,6 +458,7 @@ version()
   cout << "- (3.1.5) 14/03/12 : output error messages to user file." << endl;
   cout << "- (3.2.0) 28/09/12 : exit on PWM-reading error." << endl;
   cout << "- (3.2.1) 04/02/13 : no changes for MotifRanking." << endl;
+  cout << "- (3.2.2) 16/01/14 : no changes for MotifRanking." << endl;
   cout << "- end." << endl;
   cout << endl;
 } 
