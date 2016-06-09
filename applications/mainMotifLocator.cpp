@@ -555,7 +555,7 @@ main(int argc, char *argv[])
   delete myMatrix;
   cleanup();
   cerr << "MotifLocator: ending procedure successfully." << endl;
-  exit(1);
+  exit(0);
 }
 
 
